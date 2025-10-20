@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ titulo }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            color: #333;
+            font-size: 10pt;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+            margin-bottom: 0.5em;
+        }
+        h1 {
+            text-align: center;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            font-size: 20pt;
+        }
+        h2 {
+            border-bottom: 1px solid #bdc3c7;
+            padding-bottom: 5px;
+            margin-top: 1.5em;
+            font-size: 14pt;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1em;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header .info {
+            text-align: left;
+            border: 1px solid #ddd;
+            padding: 10px;
+            display: inline-block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .info p { margin: 5px 0; }
+        .info strong { color: #34495e; }
+        .section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        .no-data {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 20px;
+            font-style: italic;
+        }
+        .evidencia-grid {
+            margin-top: 1em;
+            display: block;
+        }
+        .evidencia-item {
+            width: 100%;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            page-break-inside: avoid;
+        }
+        .evidencia-item img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>{{ titulo }}</h1>
+        <p>Reporte generado el: {% now "d/m/Y H:i" %}</p>
+        <p>Periodo del reporte: {{ start_date|date:"d/m/Y" }} al {{ end_date|date:"d/m/Y" }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Información General de la Unidad</h2>
+        <div class="info">
+            <p><strong>Nombre:</strong> {{ unidad.nombre }}</p>
+            <p><strong>Tipo:</strong> {{ unidad.get_tipo_display }}</p>
+            <p><strong>Placas:</strong> {{ unidad.placas }}</p>
+            <p><strong>Kilometraje Actual:</strong> {{ unidad.km_actual|floatformat:0 }} km</p>
+            <p><strong>Últimas Horas de Thermo:</strong> {{ ultimas_horas_thermo }}</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Fallas Reportadas en Checklist</h2>
+        {% if fallas_checklist %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Componente Afectado</th>
+                        <th>Observación</th>
+                        <th>Técnico</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for falla in fallas_checklist %}
+                    <tr>
+                        <td>{{ falla.fecha|date:"d/m/Y H:i" }}</td>
+                        <td>{{ falla.componente }}</td>
+                        <td>{{ falla.observacion|default:"N/A" }}</td>
+                        <td>{{ falla.tecnico }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="no-data">No se encontraron fallas en los checklists para el periodo seleccionado.</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>🚨 Alertas de Llantas</h2>
+        {% if alertas_llantas %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Técnico</th>
+                        <th>Posición</th>
+                        <th>MM</th>
+                        <th>Presión (PSI)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alerta in alertas_llantas %}
+                    <tr>
+                        <td>{{ alerta.fecha|date:"d/m/Y H:i" }}</td>
+                        <td>{{ alerta.tecnico }}</td>
+                        <td>{{ alerta.posicion }}</td>
+                        <td style="{% if alerta.status_mm == 'ROJO' %}color: red; font-weight: bold;{% elif alerta.status_mm == 'AMARILLO' %}color: orange; font-weight: bold;{% endif %}">
+                            {{ alerta.mm }}
+                        </td>
+                        <td style="{% if alerta.status_presion == 'ROJO' %}color: red; font-weight: bold;{% elif alerta.status_presion == 'AMARILLO' %}color: orange; font-weight: bold;{% endif %}">
+                            {{ alerta.presion }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="no-data">No se registraron alertas de llantas en este periodo.</p>
+        {% endif %}
+    </div>
+    <div class="section">
+        <h2>Cargas de Diésel</h2>
+        {% if cargas_diesel %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>KM</th>
+                        <th>Lts. Motor</th>
+                        <th>Lts. Thermo</th>
+                        <th>Costo</th>
+                        <th>Rendimiento (Km/L)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for carga in cargas_diesel %}
+                    <tr>
+                        <td>{{ carga.fecha|date:"d/m/Y" }}</td>
+                        <td>{{ carga.km_actual }}</td>
+                        <td>{{ carga.lts_diesel }}</td>
+                        <td>{{ carga.lts_thermo|default_if_none:"-" }}</td>
+                        <td>${{ carga.costo|default_if_none:"0.00" }}</td>
+                        <td>{{ carga.rendimiento|default_if_none:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="no-data">No se registraron cargas de diésel en este periodo.</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Cargas de Urea</h2>
+        {% if cargas_urea %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Litros Cargados</th>
+                        <th>Costo</th>
+                        <th>Rendimiento (Km/L)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for carga in cargas_urea %}
+                    <tr>
+                        <td>{{ carga.fecha|date:"d/m/Y" }}</td>
+                        <td>{{ carga.litros_cargados }}</td>
+                        <td>${{ carga.costo|default_if_none:"0.00" }}</td>
+                        <td>{{ carga.rendimiento|default_if_none:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="no-data">No se registraron cargas de urea en este periodo.</p>
+        {% endif %}
+    </div>
+
+    <div class="section" style="page-break-before: auto;">
+        <h2>Evidencia Fotográfica de Fallas</h2>
+        {% if fotos_evidencia %}
+            <div class="evidencia-grid">
+            {% for foto in fotos_evidencia %}
+                <div class="evidencia-item">
+                    <p><strong>Componente:</strong> {{ foto.componente }}</p>
+                    <p><strong>Fecha:</strong> {{ foto.fecha|date:"d/m/Y H:i" }}</p>
+                    <img src="{{ foto.url }}" alt="Evidencia de {{ foto.componente }}">
+                </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <p class="no-data">No hay evidencia fotográfica disponible para este periodo.</p>
+        {% endif %}
+    </div>
+
+</body>
+</html>

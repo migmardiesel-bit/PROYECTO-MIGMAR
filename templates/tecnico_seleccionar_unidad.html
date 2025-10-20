@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h4 class="m-0 font-weight-bold text-primary">Paso 1: Seleccionar Unidad</h4>
+            <p class="text-muted mb-0">Elige una unidad para iniciar el proceso de inspección y carga.</p>
+        </div>
+        <div class="card-body">
+            
+            <div class="mb-4">
+                <form method="get" action="" class="d-flex" role="search">
+                    <input type="text" name="q" class="form-control" placeholder="Buscar unidad por nombre..." value="{{ search_query|default:'' }}" aria-label="Buscar unidad">
+                    <button class="btn btn-primary ms-2" type="submit">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </form>
+            </div>
+            {% if unidades %}
+                <div class="row">
+                    {% for unidad in unidades %}
+                    <div class="col-xl-3 col-md-4 col-sm-6 mb-4">
+                        <a href="{% url 'proceso-checklist' unidad.pk %}" class="card-link">
+                            <div class="card h-100 text-center shadow-sm card-hover">
+                                <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                                    <i class="fas fa-truck fa-4x mb-3 text-primary"></i>
+                                    <h5 class="card-title font-weight-bold">{{ unidad.nombre }}</h5>
+                                    <p class="card-text text-muted">{{ unidad.get_tipo_display }}</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info" role="alert">
+                    No se encontraron unidades con ese nombre. Por favor, intenta de nuevo.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-link {
+        text-decoration: none;
+        color: inherit;
+    }
+    .card-hover {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,535 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Dashboard de Control de Suministros</h1>
+            <p class="text-muted">Monitoreo en tiempo real de inventario de combustibles y lubricantes</p>
+        </div>
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <small class="text-muted d-block">Última actualización</small>
+                <span id="current-time" class="fw-bold">{{ current_time|date:"d/m/Y H:i" }}</span>
+            </div>
+            <a href="{% url 'dashboard_graficas' %}" class="btn btn-info btn-sm d-flex align-items-center me-2">
+                <i class="fas fa-chart-bar me-1"></i> Ver Gráficas +
+            </a>
+            <button class="btn btn-primary btn-sm d-flex align-items-center" onclick="refreshData()" id="refresh-btn">
+                <i class="fas fa-sync-alt me-1"></i> Actualizar
+            </button>
+        </div>
+    </div>
+
+    {% if alertas_activas %}
+    <div class="row mb-4">
+        {% for alerta in alertas_activas %}
+        <div class="col-12">
+            <div class="alert alert-danger border-left-danger shadow h-100 py-2" role="alert">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col-auto mr-3">
+                            <i class="fas fa-exclamation-triangle fa-3x text-danger"></i>
+                        </div>
+                        <div class="col">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                ¡Alerta de Inventario Bajo!
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ alerta.get_tipo_suministro_display }}:
+                                <span class="text-danger">{{ alerta.nivel_reportado|floatformat:2 }} L</span>
+                            </div>
+                            <small class="text-muted">
+                                Último aviso enviado: {{ alerta.ultimo_aviso|date:"d/m/Y H:i" }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                                Diésel Disponible
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">
+                                {{ diesel_restante|floatformat:2 }} L
+                            </div>
+                            <div class="mt-2 text-xs">
+                                <span class="text-muted">Capacidad total: 14,000 L</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-gas-pump fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-info text-uppercase mb-1">
+                                Urea Disponible
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">
+                                {{ urea_restante|floatformat:2 }} L
+                            </div>
+                            <div class="mt-2 text-xs">
+                                <span class="text-muted">Capacidad total: 1,000 L</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-flask fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-secondary text-uppercase mb-1">
+                                Aceite Disponible
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">
+                                {{ aceite_restante|floatformat:2 }} L
+                            </div>
+                            <div class="mt-2 text-xs">
+                                <span class="text-muted">Capacidad total: 200 L</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-oil-can fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                                Estado General
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800" id="general-status">
+                                Calculando...
+                            </div>
+                            <div class="mt-2 text-xs">
+                                <span class="text-muted">Todos los suministros</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-warning">Nivel de Diésel</h6>
+                    <div>
+                        <span id="diesel-percent" class="badge bg-warning text-dark">0%</span>
+                        <span class="badge bg-light text-dark ms-1">14,000 L</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 30px;">
+                        <div id="diesel-bar" class="progress-bar bg-warning progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%;" 
+                             aria-valuenow="{{ diesel_restante }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="14000">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div class="small">
+                            <span class="fw-bold">{{ diesel_restante|floatformat:2 }} L</span> disponibles
+                        </div>
+                        <div class="small text-muted">
+                            {{ diesel_restante|floatformat:0 }} / 14,000 L
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-info">Nivel de Urea</h6>
+                    <div>
+                        <span id="urea-percent" class="badge bg-info text-dark">0%</span>
+                        <span class="badge bg-light text-dark ms-1">1,000 L</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 30px;">
+                        <div id="urea-bar" class="progress-bar bg-info progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%;" 
+                             aria-valuenow="{{ urea_restante }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="1000">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div class="small">
+                            <span class="fw-bold">{{ urea_restante|floatformat:2 }} L</span> disponibles
+                        </div>
+                        <div class="small text-muted">
+                            {{ urea_restante|floatformat:0 }} / 1,000 L
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-secondary">Nivel de Aceite</h6>
+                    <div>
+                        <span id="aceite-percent" class="badge bg-secondary text-white">0%</span>
+                        <span class="badge bg-light text-dark ms-1">200 L</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 30px;">
+                        <div id="aceite-bar" class="progress-bar bg-secondary progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%;" 
+                             aria-valuenow="{{ aceite_restante }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="200">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div class="small">
+                            <span class="fw-bold">{{ aceite_restante|floatformat:2 }} L</span> disponibles
+                        </div>
+                        <div class="small text-muted">
+                            {{ aceite_restante|floatformat:0 }} / 200 L
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">Estado de Suministros</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <div class="status-indicator p-3 rounded" id="diesel-status">
+                                <div class="status-icon mb-2">
+                                    <i class="fas fa-gas-pump fa-2x mb-2"></i>
+                                </div>
+                                <h6 class="fw-bold">Diésel</h6>
+                                <div class="status-percentage fw-bold fs-5 mb-1" id="diesel-status-percent">0%</div>
+                                <small class="text-muted d-block" id="diesel-status-text">Calculando...</small>
+                                <div class="status-bar mt-2">
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="status-indicator p-3 rounded" id="urea-status">
+                                <div class="status-icon mb-2">
+                                    <i class="fas fa-flask fa-2x mb-2"></i>
+                                </div>
+                                <h6 class="fw-bold">Urea</h6>
+                                <div class="status-percentage fw-bold fs-5 mb-1" id="urea-status-percent">0%</div>
+                                <small class="text-muted d-block" id="urea-status-text">Calculando...</small>
+                                <div class="status-bar mt-2">
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="status-indicator p-3 rounded" id="aceite-status">
+                                <div class="status-icon mb-2">
+                                    <i class="fas fa-oil-can fa-2x mb-2"></i>
+                                </div>
+                                <h6 class="fw-bold">Aceite</h6>
+                                <div class="status-percentage fw-bold fs-5 mb-1" id="aceite-status-percent">0%</div>
+                                <small class="text-muted d-block" id="aceite-status-text">Calculando...</small>
+                                <div class="status-bar mt-2">
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">Acciones Rápidas</h6>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <a href="{% url 'ajusteinventario-create' %}" class="btn btn-success mb-2 d-flex align-items-center justify-content-start">
+                        <i class="fas fa-balance-scale me-2"></i> Ajustar Inventario
+                    </a>
+                    <a href="{% url 'comprasuministro-create' %}" class="btn btn-outline-primary mb-2 d-flex align-items-center justify-content-start">
+                        <i class="fas fa-plus-circle me-2"></i> Registrar Compra
+                    </a>
+                    
+                    <form action="{% url 'enviar-reporte-estado' %}" method="post" class="d-grid">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-warning mb-2 d-flex align-items-center justify-content-start">
+                            <i class="fas fa-paper-plane me-2"></i> Enviar Estado Actual
+                        </button>
+                    </form>
+                    <a href="#" class="btn btn-outline-secondary d-flex align-items-center justify-content-start mt-auto">
+                        <i class="fas fa-cog me-2"></i> Configurar Alertas
+                    </a>
+                </div>
+            </div>
+        </div>
+        </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        border: none;
+        border-radius: 0.5rem;
+        transition: transform 0.2s;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .border-start-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    
+    .border-start-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    
+    .border-start-secondary {
+        border-left: 0.25rem solid #858796 !important;
+    }
+    
+    .border-start-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    
+    .status-indicator {
+        padding: 1rem;
+        transition: all 0.3s;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    
+    .status-indicator:hover {
+        background-color: #f8f9fc;
+    }
+    
+    .progress-bar-striped {
+        background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+        background-size: 1rem 1rem;
+    }
+    
+    @keyframes progress-bar-stripes {
+        0% { background-position: 1rem 0; }
+        100% { background-position: 0 0; }
+    }
+    
+    .progress-bar-animated {
+        animation: progress-bar-stripes 1s linear infinite;
+    }
+    
+    .status-icon {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .status-percentage {
+        font-size: 1.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Función para actualizar la hora actual
+    function updateCurrentTime() {
+        const now = new Date();
+        const options = { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric',
+            hour: '2-digit', 
+            minute: '2-digit'
+        };
+        document.getElementById('current-time').textContent = now.toLocaleDateString('es-ES', options);
+    }
+    
+    // Actualizar la hora cada minuto
+    updateCurrentTime();
+    setInterval(updateCurrentTime, 60000);
+    
+    // Función para animar las barras de progreso
+    function animateProgressBar(barId, percentId, value, total, statusId, statusTextId, statusPercentId) {
+        const bar = document.getElementById(barId);
+        const percentElement = document.getElementById(percentId);
+        const statusElement = document.getElementById(statusId);
+        const statusTextElement = document.getElementById(statusTextId);
+        const statusPercentElement = document.getElementById(statusPercentId);
+        
+        if (bar && percentElement && statusElement && statusTextElement && statusPercentElement) {
+            const percentage = Math.min(100, (value / total) * 100);
+            const roundedPercentage = Math.round(percentage);
+            
+            // Animación de la barra
+            setTimeout(() => {
+                bar.style.width = percentage + '%';
+                percentElement.textContent = roundedPercentage + '%';
+                statusPercentElement.textContent = roundedPercentage + '%';
+                
+                // Actualizar estado según el porcentaje
+                let status, statusText, statusColor;
+                
+                if (percentage >= 70) {
+                    status = "Óptimo";
+                    statusText = "Nivel adecuado";
+                    statusColor = "#1cc88a"; // Verde
+                } else if (percentage >= 30) {
+                    status = "Moderado";
+                    statusText = "Considerar reposición";
+                    statusColor = "#f6c23e"; // Amarillo
+                } else {
+                    status = "Crítico";
+                    statusText = "Reponer urgentemente";
+                    statusColor = "#e74a3b"; // Rojo
+                }
+                
+                // Actualizar color del icono
+                const icon = statusElement.querySelector('.status-icon i');
+                icon.style.color = statusColor;
+                
+                // Actualizar barra de estado
+                const statusBar = statusElement.querySelector('.status-bar .progress-bar');
+                statusBar.style.width = percentage + '%';
+                statusBar.style.backgroundColor = statusColor;
+                
+                statusTextElement.textContent = status + " - " + statusText;
+                
+            }, 300); // Pequeño retraso para que la animación se vea
+        }
+    }
+    
+    // Función para calcular el estado general
+    function calculateGeneralStatus() {
+        const dieselPercent = Math.min(100, ({{ diesel_restante }} / 14000) * 100);
+        const ureaPercent = Math.min(100, ({{ urea_restante }} / 1000) * 100);
+        const aceitePercent = Math.min(100, ({{ aceite_restante }} / 200) * 100);
+        
+        const minPercent = Math.min(dieselPercent, ureaPercent, aceitePercent);
+        const generalStatusElement = document.getElementById('general-status');
+        
+        if (minPercent >= 70) {
+            generalStatusElement.textContent = "Óptimo";
+            generalStatusElement.style.color = "#1cc88a";
+        } else if (minPercent >= 30) {
+            generalStatusElement.textContent = "Moderado";
+            generalStatusElement.style.color = "#f6c23e";
+        } else {
+            generalStatusElement.textContent = "Crítico";
+            generalStatusElement.style.color = "#e74a3b";
+        }
+    }
+    
+    // Animar todas las barras
+    animateProgressBar(
+        'diesel-bar', 
+        'diesel-percent', 
+        {{ diesel_restante }}, 
+        14000,
+        'diesel-status',
+        'diesel-status-text',
+        'diesel-status-percent'
+    );
+    
+    animateProgressBar(
+        'urea-bar', 
+        'urea-percent', 
+        {{ urea_restante }}, 
+        1000,
+        'urea-status',
+        'urea-status-text',
+        'urea-status-percent'
+    );
+    
+    animateProgressBar(
+        'aceite-bar', 
+        'aceite-percent', 
+        {{ aceite_restante }}, 
+        200,
+        'aceite-status',
+        'aceite-status-text',
+        'aceite-status-percent'
+    );
+    
+    // Calcular estado general
+    calculateGeneralStatus();
+});
+
+// Función para simular la actualización de datos
+function refreshData() {
+    const refreshBtn = document.getElementById('refresh-btn');
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Actualizando...';
+    
+    // Simular una llamada a la API
+    setTimeout(() => {
+        // En una implementación real, aquí se haría una llamada al servidor
+        // para obtener los datos actualizados
+        location.reload(); // Por ahora, solo recargamos la página
+    }, 1500);
+}
+</script>
+{% endblock %}

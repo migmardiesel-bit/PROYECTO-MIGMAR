@@ -1,0 +1,655 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-background">
+        <div class="background-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+        </div>
+    </div>
+    
+    <div class="login-card">
+        <div class="card-decoration"></div>
+        
+        <div class="login-header">
+            <div class="logo-container">
+                <div class="brand-hero" role="img">
+                    <img src="{% static 'flota/images/logo.png' %}" class="brand-image" loading="lazy">
+                    <div class="brand-title">
+                    </div>
+                </div>
+            </div>
+            <h2>Iniciar Sesión</h2>
+            <p>Acceda al sistema de gestión de transporte</p>
+        </div>
+        
+        <form method="post" class="login-form" id="loginForm" novalidate>
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger mb-3">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="id_username" class="form-label">Usuario</label>
+                <div class="input-container">
+                    <div class="input-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                        </svg>
+                    </div>
+                    <input type="text" name="username" id="id_username" class="form-input" placeholder="Ingresa tu usuario" required>
+                </div>
+                <div class="input-feedback"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="id_password" class="form-label">Contraseña</label>
+                <div class="input-container">
+                    <div class="input-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                        </svg>
+                    </div>
+                    <input type="password" name="password" id="id_password" class="form-input" placeholder="Ingresa tu contraseña" required>
+                    <button type="button" class="password-toggle" id="passwordToggle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="eye-open" viewBox="0 0 16 16">
+                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="eye-closed d-none" viewBox="0 0 16 16">
+                            <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/>
+                            <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/>
+                            <path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-feedback"></div>
+            </div>
+            
+            <div class="form-options">
+                <label class="checkbox-container">
+                    <input type="checkbox" name="remember_me" id="remember_me">
+                    <span class="checkmark"></span>
+                    Mantener sesión activa
+                </label>
+                <a href="#" class="forgot-password">¿Olvidaste tu contraseña?</a>
+            </div>
+            
+            <button type="submit" class="btn-login" id="loginButton">
+                <span class="btn-text">Acceder al Sistema</span>
+                <div class="btn-loader">
+                    <div class="loader-spinner"></div>
+                </div>
+                <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+                </svg>
+            </button>
+        </form>
+        
+        <div class="login-footer">
+            <p>&copy; {% now "Y" %} Sistema de Gestión de Transporte. Todos los derechos reservados.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    :root {
+        --primary-color: #2c3e50;
+        --accent-color: #3498db;
+        --border-color: #e1e5ee;
+        --accent-strong: #1f78a6;
+        --shadow-strong: 0 18px 40px rgba(44, 62, 80, 0.12);
+        --transition: all 0.28s cubic-bezier(.25,.8,.25,1);
+        --border-radius: 12px;
+    }
+    
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    }
+    
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+    
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        width: 100%;
+        position: relative;
+    }
+    
+    .login-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        overflow: hidden;
+    }
+    
+    .background-shapes .shape {
+        position: absolute;
+        border-radius: 50%;
+        opacity: 0.05;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+    }
+    
+    .shape-1 { 
+        width: 300px; 
+        height: 300px; 
+        top: -150px; 
+        right: -100px; 
+    }
+    .shape-2 { 
+        width: 200px; 
+        height: 200px; 
+        bottom: 100px; 
+        left: -80px; 
+    }
+    .shape-3 { 
+        width: 150px; 
+        height: 150px; 
+        bottom: -50px; 
+        right: 20%; 
+    }
+    
+    .login-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-strong);
+        width: 100%;
+        max-width: 460px;
+        padding: 50px 45px 35px;
+        position: relative;
+        transition: var(--transition);
+    }
+    
+    .card-decoration {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 5px;
+        background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 50%, var(--primary-color) 100%);
+        background-size: 200% 100%;
+        animation: shimmer 3s infinite linear;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+    
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    
+    .login-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    
+    .logo-container {
+        margin-bottom: 25px;
+        display: flex;
+        justify-content: center;
+    }
+    
+    .brand-hero {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        justify-content: center;
+        flex-direction: row;
+    }
+
+    .brand-image {
+        width: 120px;
+        height: 120px;
+        object-fit: contain;
+        border-radius: 10px;
+        background: white;
+        padding: 10px;
+        border: 2px solid var(--accent-color);
+        box-shadow: 0 10px 30px rgba(44,62,80,0.08), 0 0 0 4px rgba(52,152,219,0.04);
+    }
+
+    .brand-title {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .brand-name {
+        font-size: 22px;
+        font-weight: 900;
+        color: var(--primary-color);
+        letter-spacing: 0.6px;
+    }
+
+    .brand-sub {
+        font-size: 13px;
+        color: #556b6f;
+        margin-top: 6px;
+    }
+
+    .login-header h2 {
+        color: var(--primary-color);
+        font-weight: 700;
+        font-size: 32px;
+        margin-bottom: 10px;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .login-header p {
+        color: var(--text-light);
+        font-size: 16px;
+        margin: 0 auto;
+    }
+    
+    .form-group {
+        margin-bottom: 28px;
+    }
+    
+    .form-label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: var(--text-color);
+        font-size: 15px;
+    }
+    
+    .input-container {
+        position: relative;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 16px 20px 16px 50px;
+        border: 2px solid var(--border-color);
+        border-radius: 10px;
+        font-size: 16px;
+        transition: var(--transition);
+        background-color: #f9fafb;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.15);
+        background-color: white;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-light);
+        transition: var(--transition);
+    }
+    
+    .form-input:focus ~ .input-icon {
+        color: var(--accent-color);
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--text-light);
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        transition: var(--transition);
+    }
+    
+    .password-toggle:hover {
+        background-color: rgba(0,0,0,0.05);
+    }
+    
+    .input-feedback {
+        height: 20px;
+        margin-top: 6px;
+        font-size: 13px;
+    }
+    
+    .form-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        font-size: 14px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        color: var(--text-light);
+    }
+    
+    .checkbox-container input {
+        position: absolute;
+        opacity: 0;
+    }
+    
+    .checkmark {
+        height: 20px;
+        width: 20px;
+        background-color: white;
+        border: 2px solid var(--border-color);
+        border-radius: 5px;
+        margin-right: 10px;
+        position: relative;
+        transition: var(--transition);
+    }
+    
+    .checkbox-container input:checked ~ .checkmark {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+        border-color: transparent;
+    }
+    
+    .checkmark:after {
+        content: "";
+        position: absolute;
+        display: none;
+        left: 6px;
+        top: 3px;
+        width: 5px;
+        height: 10px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+    
+    .checkbox-container input:checked ~ .checkmark:after {
+        display: block;
+    }
+    
+    .forgot-password {
+        color: var(--accent-color);
+        text-decoration: none;
+        font-weight: 500;
+        transition: var(--transition);
+    }
+    
+    .forgot-password:hover {
+        text-decoration: underline;
+    }
+    
+    .btn-login {
+        width: 100%;
+        padding: 18px;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 30px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-login:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(52, 152, 219, 0.4);
+    }
+
+    .btn-loader {
+        display: none;
+        position: absolute;
+    }
+    
+    .loader-spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid transparent;
+        border-top: 2px solid #ffffff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .login-footer {
+        text-align: center;
+        padding-top: 25px;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    .login-footer p {
+        color: var(--text-light);
+        font-size: 13px;
+    }
+    
+    .form-input.is-invalid { border-color: var(--error-color); }
+    .is-invalid + .input-icon { color: var(--error-color); }
+    .input-feedback.error-message { color: var(--error-color); }
+    
+    .btn-login.loading .btn-text,
+    .btn-login.loading .btn-icon { visibility: hidden; }
+    .btn-login.loading .btn-loader { display: block; }
+    
+    .d-none { display: none !important; }
+
+    /* ===== MEJORAS PARA PC ===== */
+    /* Aumentamos el tamaño de los shapes para pantallas grandes */
+    @media (min-width: 1024px) {
+        .shape-1 { 
+            width: 450px; 
+            height: 450px; 
+            top: -200px; 
+            right: -150px; 
+        }
+        .shape-2 { 
+            width: 350px; 
+            height: 350px; 
+            bottom: 150px; 
+            left: -120px; 
+        }
+        .shape-3 { 
+            width: 250px; 
+            height: 250px; 
+            bottom: -80px; 
+            right: 15%; 
+        }
+        
+        .login-card {
+            max-width: 500px;
+            padding: 60px 55px 40px;
+        }
+        
+        .login-header h2 {
+            font-size: 36px;
+        }
+        
+        .brand-image {
+            width: 140px;
+            height: 140px;
+        }
+        
+        .brand-name {
+            font-size: 26px;
+        }
+        
+        .brand-sub {
+            font-size: 14px;
+        }
+    }
+
+    /* ===== RESPONSIVE PARA MÓVIL ===== */
+    /* Mantenemos el diseño móvil como está */
+    @media (max-width: 480px) {
+        .login-card {
+            padding: 40px 25px 25px;
+        }
+        
+        .login-header h2 {
+            font-size: 26px;
+        }
+        
+        .form-options {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
+        .forgot-password {
+            align-self: flex-end;
+        }
+        
+        .brand-hero {
+            flex-direction: column;
+            gap: 10px;
+        }
+        .brand-image { 
+            width: 96px; 
+            height: 96px; 
+            padding: 8px; 
+        }
+        .brand-name { 
+            font-size: 18px; 
+            text-align: center; 
+        }
+        .brand-sub { 
+            font-size: 12px; 
+            text-align: center; 
+        }
+    }
+    
+    @media (min-width: 768px) {
+        .login-footer {
+            margin: 0 -45px -35px;
+            padding: 25px 45px;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginButton');
+        const passwordToggle = document.getElementById('passwordToggle');
+        const passwordInput = document.getElementById('id_password');
+        
+        // Password toggle functionality
+        passwordToggle.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.querySelector('.eye-open').classList.toggle('d-none', type === 'text');
+            this.querySelector('.eye-closed').classList.toggle('d-none', type === 'password');
+        });
+        
+        // Form validation and submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            let isValid = true;
+            clearErrors();
+            
+            // Username validation
+            const username = document.getElementById('id_username').value.trim();
+            if (!username) {
+                showError('id_username', 'Por favor, ingresa tu usuario');
+                isValid = false;
+            }
+            
+            // Password validation
+            const password = document.getElementById('id_password').value.trim();
+            if (!password) {
+                showError('id_password', 'Por favor, ingresa tu contraseña');
+                isValid = false;
+            }
+            
+            if (isValid) {
+                loginBtn.classList.add('loading');
+                // Real form submission
+                setTimeout(() => {
+                    form.submit();
+                }, 1000); // Small delay to show loader
+            }
+        });
+
+        // Show error message
+        function showError(inputId, message) {
+            const input = document.getElementById(inputId);
+            const feedback = input.closest('.form-group').querySelector('.input-feedback');
+            input.classList.add('is-invalid');
+            feedback.innerHTML = `<span class="error-message">${message}</span>`;
+            feedback.classList.add('error-message');
+        }
+
+        // Clear all error messages
+        function clearErrors() {
+            document.querySelectorAll('.form-input').forEach(input => input.classList.remove('is-invalid'));
+            document.querySelectorAll('.input-feedback').forEach(feedback => {
+                feedback.innerHTML = '';
+                feedback.classList.remove('error-message');
+            });
+        }
+        
+        // Add input validation on blur
+        document.getElementById('id_username').addEventListener('blur', function() {
+            if (!this.value.trim()) {
+                showError('id_username', 'Por favor, ingresa tu usuario');
+            } else {
+                clearError('id_username');
+            }
+        });
+        
+        document.getElementById('id_password').addEventListener('blur', function() {
+            if (!this.value.trim()) {
+                showError('id_password', 'Por favor, ingresa tu contraseña');
+            } else {
+                clearError('id_password');
+            }
+        });
+        
+        // Clear individual error
+        function clearError(inputId) {
+            const input = document.getElementById(inputId);
+            const feedback = input.closest('.form-group').querySelector('.input-feedback');
+            input.classList.remove('is-invalid');
+            feedback.innerHTML = '';
+            feedback.classList.remove('error-message');
+        }
+    });
+</script>
+{% endblock %}

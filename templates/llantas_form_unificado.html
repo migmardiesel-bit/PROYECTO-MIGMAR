@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <form method="post" novalidate id="llantasForm">
+        {% csrf_token %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h4 class="m-0 font-weight-bold text-primary">{{ titulo }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="row border-bottom pb-3 mb-4 align-items-center">
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <label class="form-label font-weight-bold">Unidad</label>
+                        <p class="form-control-plaintext fs-5">{{ unidad.nombre }}</p>
+                    </div>
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <label for="{{ km_form.km.id_for_label }}" class="form-label font-weight-bold">Kilometraje</label>
+                        
+                        {% render_field km_form.km class="form-control" placeholder="Ingrese el KM actual" data-km-actual=unidad.km_actual %}
+                        
+                        <div id="km-error-js" class="invalid-feedback d-block"></div>
+
+                        {% for error in km_form.km.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label font-weight-bold">Fecha</label>
+                        <p class="form-control-plaintext">{{ fecha_actual|date:"d M, Y" }}</p>
+                    </div>
+                </div>
+
+                {{ formset.management_form }}
+                {% if formset.non_form_errors %}
+                    <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+                {% endif %}
+
+                <div class="d-none d-md-block">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Posición</th>
+                                    <th>MM</th>
+                                    <th>Marca</th>
+                                    <th>Modelo</th>
+                                    <th>Medida</th>
+                                    <th>Presión (PSI)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for form in formset %}
+                                <tr>
+                                    <td class="align-middle fw-bold">
+                                        {{ form.initial.posicion|default:form.posicion.value }}
+                                        {{ form.posicion }}
+                                    </td>
+                                    <td>
+                                        {% render_field form.mm class="form-control" %}
+                                        {% for error in form.mm.errors %}
+                                            <div class="invalid-feedback d-block">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% render_field form.marca class="form-control" %}
+                                        {% for error in form.marca.errors %}
+                                            <div class="invalid-feedback d-block">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% render_field form.modelo class="form-control" %}
+                                        {% for error in form.modelo.errors %}
+                                            <div class="invalid-feedback d-block">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% render_field form.medida class="form-control" %}
+                                        {% for error in form.medida.errors %}
+                                            <div class="invalid-feedback d-block">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% render_field form.presion class="form-control" %}
+                                        {% for error in form.presion.errors %}
+                                            <div class="invalid-feedback d-block">{{ error }}</div>
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="d-block d-md-none">
+                    {% for form in formset %}
+                    <div class="card mobile-tire-card mb-3">
+                        <div class="card-header bg-dark text-white">
+                            <h6 class="mb-0">{{ form.initial.posicion|default:form.posicion.value }}</h6>
+                            {{ form.posicion }}
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="form-label small text-muted">MM</label>
+                                    {% render_field form.mm class="form-control" %}
+                                    {% for error in form.mm.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="form-label small text-muted">Presión (PSI)</label>
+                                    {% render_field form.presion class="form-control" %}
+                                    {% for error in form.presion.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label class="form-label small text-muted">Marca</label>
+                                    {% render_field form.marca class="form-control" %}
+                                    {% for error in form.marca.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <label class="form-label small text-muted">Modelo</label>
+                                    {% render_field form.modelo class="form-control" %}
+                                    {% for error in form.modelo.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label small text-muted">Medida</label>
+                                    {% render_field form.medida class="form-control" %}
+                                    {% for error in form.medida.errors %}
+                                        <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                {% if form_mode == 'update' %}
+                    <a href="{% url 'llantas-list' %}" class="btn btn-secondary"><i class="fas fa-times me-2"></i> Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios <i class="fas fa-save ms-2"></i></button>
+                {% else %}
+                    <a href="{% url 'proceso-checklist' unidad.pk %}" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i> Volver</a>
+                    <button type="submit" class="btn btn-primary">Siguiente <i class="fas fa-arrow-right ms-2"></i></button>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mobile-tire-card .form-control { padding: 0.375rem 0.75rem; font-size: 0.9rem; }
+    .mobile-tire-card .card-body { padding: 1rem; }
+    .mobile-tire-card label { margin-bottom: 0.25rem; font-weight: 500; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('llantasForm');
+    const kmInput = document.querySelector('[name="{{ km_form.km.name }}"]');
+    const kmErrorContainer = document.getElementById('km-error-js');
+
+    form.addEventListener('submit', function(event) {
+        // 1. Limpiar errores previos
+        kmInput.classList.remove('is-invalid');
+        kmErrorContainer.textContent = '';
+
+        // 2. Obtener valores
+        const kmActual = parseInt(kmInput.dataset.kmActual, 10);
+        const kmIngresado = parseInt(kmInput.value, 10);
+
+        // 3. Validar que el KM ingresado sea un número válido
+        if (isNaN(kmIngresado) || kmIngresado <= 0) {
+            event.preventDefault(); // Detiene el envío del formulario
+            kmInput.classList.add('is-invalid');
+            kmErrorContainer.textContent = 'Por favor, ingrese un número de kilometraje válido.';
+            kmInput.focus();
+            return;
+        }
+
+        // 4. Validar que el KM ingresado sea mayor al actual
+        if (kmIngresado <= kmActual) {
+            event.preventDefault(); // Detiene el envío del formulario
+            kmInput.classList.add('is-invalid');
+            kmErrorContainer.textContent = `El kilometraje debe ser mayor al último registrado (${kmActual} km).`;
+            kmInput.focus();
+            return;
+        }
+
+        // 5. MENSAJE DE CONFIRMACIÓN ELIMINADO
+        // const confirmacion = confirm("¿Está seguro de que todos los datos son correctos? Esta acción guardará la inspección.");
+        // if (!confirmacion) {
+        //     event.preventDefault();
+        // }
+    });
+});
+</script>
+{% endblock %}

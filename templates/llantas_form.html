@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3>{{ titulo }}</h3>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ formset.management_form }}
+
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label for="{{ km_form.km.id_for_label }}" class="form-label fw-bold">Kilometraje</label>
+                        {{ km_form.km }}
+                        
+                        {# --- LÍNEA AÑADIDA --- #}
+                        <div class="form-text">Último KM registrado: <strong>{{ unidad.km_actual }} km</strong></div>
+
+                        {% if km_form.km.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ km_form.km.errors.as_text }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Fecha</label>
+                        <input type="text" class="form-control-plaintext" value="{{ fecha_actual|date:"d/m/Y" }}" readonly>
+                    </div>
+                </div>
+
+                <div class="table-responsive d-none d-lg-block">
+                    <table class="table table-bordered table-sm align-middle">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th style="width: 25%;">Posición</th>
+                                <th style="width: 10%;">MM</th>
+                                <th style="width: 20%;">Marca</th>
+                                <th style="width: 20%;">Modelo</th>
+                                <th style="width: 15%;">Medida</th>
+                                <th style="width: 10%;">Presión (PSI)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for form in formset %}
+                            <tr>
+                                <td>{{ form.posicion }}</td>
+                                <td>{{ form.mm }}{% for error in form.mm.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}</td>
+                                <td>{{ form.marca }}{% for error in form.marca.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}</td>
+                                <td>{{ form.modelo }}{% for error in form.modelo.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}</td>
+                                <td>{{ form.medida }}{% for error in form.medida.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}</td>
+                                <td>{{ form.presion }}{% for error in form.presion.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-lg-none">
+                    {% for form in formset %}
+                    <div class="card mb-3 {% if form.errors %}border-danger{% endif %}">
+                        <div class="card-header fw-bold">
+                           {{ form.posicion.value }}
+                        </div>
+                        <div class="card-body">
+                            <div class="d-none">{{ form.posicion }}</div>
+                            <div class="mb-2">
+                                <label for="{{ form.mm.id_for_label }}" class="form-label small mb-0">{{ form.mm.label }}</label>
+                                {{ form.mm }}
+                                {% for error in form.mm.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}
+                            </div>
+                            <div class="mb-2">
+                                <label for="{{ form.marca.id_for_label }}" class="form-label small mb-0">{{ form.marca.label }}</label>
+                                {{ form.marca }}
+                                {% for error in form.marca.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}
+                            </div>
+                            <div class="mb-2">
+                                <label for="{{ form.modelo.id_for_label }}" class="form-label small mb-0">{{ form.modelo.label }}</label>
+                                {{ form.modelo }}
+                                {% for error in form.modelo.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}
+                            </div>
+                            <div class="mb-2">
+                                <label for="{{ form.medida.id_for_label }}" class="form-label small mb-0">{{ form.medida.label }}</label>
+                                {{ form.medida }}
+                                {% for error in form.medida.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}
+                            </div>
+                             <div class="mb-2">
+                                <label for="{{ form.presion.id_for_label }}" class="form-label small mb-0">{{ form.presion.label }}</label>
+                                {{ form.presion }}
+                                {% for error in form.presion.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}
+                            </div>
+                            </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if formset.non_form_errors %}
+                    <div class="alert alert-danger mt-3">
+                        {{ formset.non_form_errors }}
+                    </div>
+                {% endif %}
+
+                <hr>
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{% url 'tecnico-seleccionar-unidad' %}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Siguiente: Carga de Diésel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

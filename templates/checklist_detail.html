@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Detalle de Checklist - {{ object.unidad.nombre }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Detalle de Inspección de Checklist</h4>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <p><strong>Unidad:</strong> {{ object.unidad.nombre }}</p>
+                    <p><strong>Operador:</strong> {{ object.operador }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Técnico Responsable:</strong> {{ object.tecnico.get_full_name|default:object.tecnico.username }}</p>
+                    <p><strong>Fecha y Hora de Inspección:</strong> {{ object.fecha|date:"d/m/Y H:i" }}</p>
+                </div>
+            </div>
+
+            <hr>
+
+            <h5 class="mb-3">Resultados de la Inspección</h5>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 30%;">Componente</th>
+                            <th style="width: 15%;">Estado</th>
+                            <th>Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items_procesados %}
+                            <tr>
+                                <td>{{ item.componente }}</td>
+                                <td>
+                                    {% if item.estado == 'BIEN' %}
+                                        <span class="badge bg-success">BIEN</span>
+                                    {% elif item.estado == 'MALO' %}
+                                        <span class="badge bg-danger">MALO</span>
+                                    {% else %}
+                                        {{ item.estado }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.observacion|default_if_none:"Sin observaciones." }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if object.observaciones_generales %}
+                <div class="mt-4">
+                    <h6>Observaciones Generales Adicionales:</h6>
+                    <p class="border p-3 bg-light rounded">{{ object.observaciones_generales }}</p>
+                </div>
+            {% endif %}
+
+        </div>
+        <div class="card-footer text-end">
+            <a href="{% url 'checklist-list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a la Lista
+            </a>
+            <a href="{% url 'checklist-export-excel' object.pk %}" class="btn btn-success">
+                <i class="fas fa-file-excel"></i> Exportar a Excel
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% comment %} 
+    Asegúrate de tener Font Awesome cargado en tu 'base.html' para que los íconos de los botones 
+    (fas fa-arrow-left, fas fa-file-excel) se muestren correctamente.
+    Puedes agregarlo con una línea como esta en el <head> de tu base.html:
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+{% endcomment %}

@@ -1,0 +1,318 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row g-4">
+        <!-- Panel de Formulario -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow-lg border-0 h-100">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-white bg-opacity-20 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                            <i class="fas fa-plus text-primary"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h5 class="mb-0 fw-bold">{{ titulo }}</h5>
+                            <small class="opacity-75">Asignar nueva revisión de unidad</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Campo Unidad -->
+                        <div class="mb-4">
+                            <label for="{{ form.unidad.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-bus me-2 text-primary"></i>Unidad
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">
+                                    <i class="fas fa-list text-primary"></i>
+                                </span>
+                                {{ form.unidad }}
+                            </div>
+                            <div class="form-text">Seleccione la unidad a revisar</div>
+                        </div>
+                        
+                        <!-- Campo Técnico -->
+                        <div class="mb-4">
+                            <label for="{{ form.tecnico_asignado.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-user me-2 text-primary"></i>Técnico Asignado
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">
+                                    <i class="fas fa-user-cog text-primary"></i>
+                                </span>
+                                {{ form.tecnico_asignado }}
+                            </div>
+                            <div class="form-text">Asigne el técnico responsable</div>
+                        </div>
+                        
+                        <!-- Campo Fecha -->
+                        <div class="mb-4">
+                            <label for="{{ form.fecha_revision.id_for_label }}" class="form-label fw-semibold">
+                                <i class="fas fa-calendar-alt me-2 text-primary"></i>Fecha de Revisión
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0">
+                                    <i class="fas fa-clock text-primary"></i>
+                                </span>
+                                {{ form.fecha_revision }}
+                            </div>
+                            <div class="form-text">Programe la fecha de revisión</div>
+                        </div>
+                        
+                        <!-- Botón de envío -->
+                        <button type="submit" class="btn btn-success w-100 py-3 rounded-pill fw-bold mt-3">
+                            <i class="fas fa-plus-circle me-2"></i> Asignar Unidad
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Asignaciones -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow-lg border-0 h-100">
+                <div class="card-header bg-gradient-info text-white py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 bg-white bg-opacity-20 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="fas fa-clipboard-list text-primary"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="mb-0 fw-bold">Asignaciones del Día</h5>
+                                <small class="opacity-75">Revisiones programadas para la fecha seleccionada</small>
+                            </div>
+                        </div>
+                        <form method="get" class="d-flex align-items-center">
+                            <div class="input-group input-group-sm shadow-sm">
+                                <span class="input-group-text bg-white border-end-0">
+                                    <i class="fas fa-filter text-primary"></i>
+                                </span>
+                                <input type="date" name="fecha" value="{{ fecha_filtro|date:'Y-m-d' }}" class="form-control border-start-0">
+                                <button type="submit" class="btn btn-light border">
+                                    <i class="fas fa-search me-1 text-primary"></i> Filtrar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th class="ps-4">Unidad</th>
+                                    <th>Técnico</th>
+                                    <th>Estado</th>
+                                    <th class="text-center pe-4">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for asignacion in asignaciones_del_dia %}
+                                <tr class="{% if asignacion.status != 'PENDIENTE' %}table-active{% endif %}">
+                                    <!-- Columna Unidad -->
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0 bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                                                <i class="fas fa-bus text-primary"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <strong class="fw-semibold">{{ asignacion.unidad.nombre }}</strong>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    
+                                    <!-- Columna Técnico -->
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0 bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                <i class="fas fa-user text-primary"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-2">
+                                                {{ asignacion.tecnico_asignado.get_full_name|default:asignacion.tecnico_asignado.username }}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    
+                                    <!-- Columna Estado -->
+                                    <td>
+                                        {% if asignacion.status == 'PENDIENTE' %}
+                                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2">
+                                                <i class="fas fa-clock me-1 text-primary"></i> Pendiente
+                                            </span>
+                                        {% elif asignacion.status == 'CANCELADO' %}
+                                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 py-2">
+                                                <i class="fas fa-ban me-1 text-primary"></i> Cancelado
+                                            </span>
+                                        {% elif asignacion.status == 'NO_VINO' %}
+                                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-2">
+                                                <i class="fas fa-user-times me-1 text-primary"></i> No Vino
+                                            </span>
+                                        {% endif %}
+                                        
+                                        {% if asignacion.comentario_cancelacion %}
+                                            <div class="mt-2 p-2 bg-light rounded">
+                                                <p class="small text-muted mb-0 fst-italic">
+                                                    <i class="fas fa-comment me-1 text-primary"></i> "{{ asignacion.comentario_cancelacion }}"
+                                                </p>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <!-- Columna Acciones -->
+                                    <td class="text-center pe-4">
+                                        {% if asignacion.status == 'PENDIENTE' %}
+                                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#cancelModal-{{ asignacion.pk }}">
+                                            <i class="fas fa-ban me-1"></i> Cancelar
+                                        </button>
+                                        {% else %}
+                                            <span class="text-muted small">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                
+                                <!-- Modal de Cancelación -->
+                                <div class="modal fade" id="cancelModal-{{ asignacion.pk }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content border-0 shadow-lg">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i> Cancelar Revisión
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{% url 'cancelar-revision' asignacion.pk %}" method="post">
+                                                {% csrf_token %}
+                                                <div class="modal-body py-4">
+                                                    <div class="alert alert-warning d-flex align-items-center" role="alert">
+                                                        <i class="fas fa-info-circle me-2 fs-5 text-primary"></i>
+                                                        <div>
+                                                            Está a punto de cancelar la revisión de <strong>{{ asignacion.unidad.nombre }}</strong>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Motivo de Cancelación</label>
+                                                        <select name="status" class="form-select" required>
+                                                            <option value="CANCELADO">Cancelado</option>
+                                                            <option value="NO_VINO">No se presentó la unidad</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Comentario Adicional</label>
+                                                        <textarea name="comentario" class="form-control" rows="3" placeholder="Agregue detalles sobre la cancelación..."></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                                                    <button type="submit" class="btn btn-danger rounded-pill px-4">
+                                                        <i class="fas fa-ban me-1"></i> Confirmar Cancelación
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-5">
+                                        <div class="py-4">
+                                            <i class="fas fa-inbox fa-3x text-primary mb-3"></i>
+                                            <h5 class="text-muted">No hay unidades asignadas para esta fecha</h5>
+                                            <p class="text-muted small">Utilice el formulario para asignar una nueva revisión</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+    }
+    
+    .bg-gradient-info {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .card {
+        border-radius: 16px;
+        overflow: hidden;
+    }
+    
+    .card-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .table > :not(:first-child) {
+        border-top: 2px solid #e9ecef;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(58, 123, 213, 0.05);
+    }
+    
+    .form-control, .form-select {
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+    }
+    
+    .input-group-text {
+        border-radius: 8px 0 0 8px;
+    }
+    
+    .input-group .form-control:not(:first-child) {
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .modal-content {
+        border-radius: 16px;
+    }
+    
+    .btn {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .badge {
+        font-weight: 500;
+    }
+</style>
+
+<script>
+    // Validación básica de formulario
+    (function() {
+        'use strict'
+        
+        // Obtener todos los formularios a los que queremos aplicar estilos de validación de Bootstrap personalizados
+        var forms = document.querySelectorAll('.needs-validation')
+        
+        // Bucle sobre ellos y evitar el envío
+        Array.prototype.slice.call(forms)
+            .forEach(function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
+{% endblock %}

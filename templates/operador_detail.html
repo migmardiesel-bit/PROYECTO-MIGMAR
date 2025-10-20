@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1 text-gray-800">{{ titulo }}</h1>
+            <p class="text-muted">Información completa del registro</p>
+        </div>
+        <div>
+            <a href="{% url 'operador-list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Volver al Listado
+            </a>
+            <a href="{% url 'operador-update' object.pk %}" class="btn btn-primary">
+                <i class="fas fa-edit me-2"></i>Editar Operador
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Operador: {{ object.nombre }} {{ object.apellido }}</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Nombre:</strong></p>
+                    <p class="lead">{{ object.nombre }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Apellido:</strong></p>
+                    <p class="lead">{{ object.apellido }}</p>
+                </div>
+                <div class="col-md-6 mt-3">
+                    <p><strong>Teléfono:</strong></p>
+                    <p class="lead">{{ object.telefono|default:"No especificado" }}</p>
+                </div>
+                </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

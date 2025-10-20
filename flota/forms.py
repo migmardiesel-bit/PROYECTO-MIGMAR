@@ -1,0 +1,322 @@
+# flota/forms.py
+# --- ARCHIVO CORREGIDO: SE ELIMINÓ LA VALIDACIÓN DE INVENTARIO ---
+from django import forms
+from .models import (
+    Unidad, Operador, CargaDiesel, CargaAceite, CargaUrea, CompraSuministro, 
+    ChecklistInspeccion, LlantasInspeccion, LlantaDetalle, AjusteInventario, AsignacionRevision # <-- Añadir AjusteInventario
+)
+from django.core.exceptions import ValidationError
+from django.db.models import Sum
+from django.forms import BaseFormSet
+from django.db.models import Sum, Q  # <--- MODIFICA ESTA LÍNEA (AÑADE LA Q)
+from django.contrib.auth.models import User, Group # <-- Añadir Group
+
+class UnidadForm(forms.ModelForm):
+    class Meta:
+        model = Unidad
+        fields = '__all__'
+
+class OperadorForm(forms.ModelForm):
+    class Meta:
+        model = Operador
+        fields = '__all__'
+
+class CargaDieselForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        self.unidad_instance = kwargs.pop('unidad', None)
+        
+        if 'instance' in kwargs and kwargs['instance']:
+            self.unidad_instance = kwargs['instance'].unidad
+
+        super().__init__(*args, **kwargs)
+
+        if self.unidad_instance and self.unidad_instance.tipo == 'S':
+            if 'lts_thermo' in self.fields:
+                del self.fields['lts_thermo']
+            if 'hrs_thermo' in self.fields:
+                del self.fields['hrs_thermo']
+        
+        if user and user.groups.filter(name='Tecnico').exists():
+            if 'unidad' in self.fields:
+                self.fields['unidad'].disabled = True
+
+        if 'cinchos_anteriores' in self.fields:
+            self.fields['cinchos_anteriores'].required = False
+            if self.unidad_instance:
+                ya_existen_cinchos = CargaDiesel.objects.filter(
+                    unidad=self.unidad_instance
+                ).exclude(cinchos_actuales__exact='').exists()
+                if ya_existen_cinchos:
+                    self.fields['cinchos_anteriores'].widget.attrs['readonly'] = True
+                    self.fields['cinchos_anteriores'].widget.attrs['class'] = 'form-control-plaintext'
+
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        # # --- INICIO: VALIDACIÓN DE INVENTARIO DESACTIVADA ---
+        # if not self.instance.pk:
+        #     lts_a_cargar = cleaned_data.get('lts_diesel', 0) or 0
+        #     thermo_a_cargar = cleaned_data.get('lts_thermo', 0) or 0
+        #     total_a_cargar = lts_a_cargar + thermo_a_cargar
+        #
+        #     if total_a_cargar > 0:
+        #         total_comprado = CompraSuministro.objects.filter(tipo_suministro='DIESEL').aggregate(total=Sum('cantidad'))['total'] or 0
+        #         consumo_motor = CargaDiesel.objects.aggregate(total=Sum('lts_diesel'))['total'] or 0
+        #         consumo_thermo = CargaDiesel.objects.aggregate(total=Sum('lts_thermo'))['total'] or 0
+        #         inventario_actual = total_comprado - (consumo_motor + consumo_thermo)
+        #
+        #         if total_a_cargar > inventario_actual:
+        #             raise ValidationError(
+        #                 f"No se puede cargar {total_a_cargar} L de diésel. "
+        #                 f"Solo hay {inventario_actual:.2f} L disponibles en el inventario."
+        #             )
+        # # --- FIN: VALIDACIÓN DE INVENTARIO DESACTIVADA ---
+
+        unidad = self.unidad_instance or cleaned_data.get('unidad')
+        if not unidad: return cleaned_data
+        ultima_carga = CargaDiesel.objects.filter(unidad=unidad).order_by('-fecha').first()
+        if ultima_carga:
+            km_actual_form = cleaned_data.get('km_actual')
+            if km_actual_form is not None and km_actual_form <= ultima_carga.km_actual:
+                self.add_error('km_actual', f"El kilometraje debe ser mayor al último registrado ({ultima_carga.km_actual} km).")
+            
+            hrs_thermo_form = cleaned_data.get('hrs_thermo')
+            if hrs_thermo_form is not None and hrs_thermo_form <= (ultima_carga.hrs_thermo or 0):
+                self.add_error('hrs_thermo', f"Las horas del thermo deben ser mayores a las últimas registradas ({ultima_carga.hrs_thermo} hrs).")
+        return cleaned_data
+
+    def clean_cinchos_actuales(self):
+        cinchos_actuales = self.cleaned_data.get('cinchos_actuales')
+        if cinchos_actuales:
+            if CargaDiesel.objects.filter(cinchos_actuales=cinchos_actuales).exists():
+                raise ValidationError("Este número de cincho ya ha sido registrado. No se puede repetir.")
+        return cinchos_actuales
+
+    class Meta:
+        model = CargaDiesel
+        fields = '__all__'
+        exclude = ['fecha', 'rendimiento', 'costo'] 
+        widgets = {
+            'unidad': forms.Select(attrs={'class': 'form-control'}),
+            'operador': forms.Select(attrs={'class': 'form-control'}),
+        }
+        
+class CargaAceiteForm(forms.ModelForm):
+    def clean(self):
+        cleaned_data = super().clean()
+        # # --- INICIO: VALIDACIÓN DE INVENTARIO DESACTIVADA ---
+        # if not self.instance.pk:
+        #     cantidad_a_cargar = cleaned_data.get('cantidad', 0) or 0
+        #     if cantidad_a_cargar > 0:
+        #         total_comprado = CompraSuministro.objects.filter(tipo_suministro='ACEITE').aggregate(total=Sum('cantidad'))['total'] or 0
+        #         total_consumido = CargaAceite.objects.aggregate(total=Sum('cantidad'))['total'] or 0
+        #         inventario_actual = total_comprado - total_consumido
+        #         if cantidad_a_cargar > inventario_actual:
+        #             raise ValidationError(
+        #                 f"No se puede cargar {cantidad_a_cargar} L de aceite. "
+        #                 f"Solo hay {inventario_actual:.2f} L disponibles en el inventario."
+        #             )
+        # # --- FIN: VALIDACIÓN DE INVENTARIO DESACTIVADA ---
+        return cleaned_data
+
+    class Meta:
+        model = CargaAceite
+        fields = '__all__'
+        exclude = ['fecha']
+
+class CargaUreaForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Esta línea es crucial. Permite enviar el formulario con el campo vacío.
+        self.fields['litros_cargados'].required = False
+
+    class Meta:
+        model = CargaUrea
+        fields = ['litros_cargados', 'comentarios'] # Solo los campos que el usuario debe llenar
+
+# Capacidad máxima (en litros) de los tanques de almacenamiento.
+MAX_CAPACIDAD_DIESEL = 20000
+MAX_CAPACIDAD_UREA = 5000
+MAX_CAPACIDAD_ACEITE = 2000
+
+class CompraSuministroForm(forms.ModelForm):
+    def clean(self):
+        cleaned_data = super().clean()
+        tipo_suministro = cleaned_data.get('tipo_suministro')
+        cantidad_compra = cleaned_data.get('cantidad', 0) or 0
+
+        if tipo_suministro == 'OTRO' or cantidad_compra <= 0:
+            return cleaned_data
+
+        qs_compras = CompraSuministro.objects.filter(tipo_suministro=tipo_suministro)
+        if self.instance.pk:
+            qs_compras = qs_compras.exclude(pk=self.instance.pk)
+
+        inventario_actual = 0
+        capacidad_maxima = 0
+
+        if tipo_suministro == 'DIESEL':
+            total_comprado = qs_compras.aggregate(total=Sum('cantidad'))['total'] or 0
+            consumo_motor = CargaDiesel.objects.aggregate(total=Sum('lts_diesel'))['total'] or 0
+            consumo_thermo = CargaDiesel.objects.aggregate(total=Sum('lts_thermo'))['total'] or 0
+            inventario_actual = total_comprado - (consumo_motor + consumo_thermo)
+            capacidad_maxima = MAX_CAPACIDAD_DIESEL
+        
+        elif tipo_suministro == 'UREA':
+            total_comprado = qs_compras.aggregate(total=Sum('cantidad'))['total'] or 0
+            total_consumido = CargaUrea.objects.aggregate(total=Sum('litros_cargados'))['total'] or 0
+            inventario_actual = total_comprado - total_consumido
+            capacidad_maxima = MAX_CAPACIDAD_UREA
+
+        elif tipo_suministro == 'ACEITE':
+            total_comprado = qs_compras.aggregate(total=Sum('cantidad'))['total'] or 0
+            total_consumido = CargaAceite.objects.aggregate(total=Sum('cantidad'))['total'] or 0
+            inventario_actual = total_comprado - total_consumido
+            capacidad_maxima = MAX_CAPACIDAD_ACEITE
+
+        espacio_disponible = capacidad_maxima - inventario_actual
+        if cantidad_compra > espacio_disponible:
+            raise ValidationError(
+                f"La compra excede la capacidad del tanque. "
+                f"Inventario actual (sin esta compra): {inventario_actual:.2f} L. "
+                f"Espacio disponible: {espacio_disponible:.2f} L. "
+                f"Está intentando comprar {cantidad_compra} L."
+            )
+        return cleaned_data
+
+    class Meta:
+        model = CompraSuministro
+        fields = '__all__'
+        # ========= INICIO DEL CAMBIO =========
+        widgets = {
+            'fecha_compra': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+        # ========= FIN DEL CAMBIO ============
+
+# Formulario completo del Checklist
+class ChecklistInspeccionForm(forms.ModelForm):
+    class Meta:
+        model = ChecklistInspeccion
+        exclude = ['fecha', 'tecnico']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        if 'unidad' in self.initial:
+             self.fields['unidad'].disabled = True
+        else:
+             self.fields['unidad'].widget.attrs.update({'class': 'form-select'})
+
+        self.fields['operador'].widget.attrs.update({'class': 'form-select'})
+        
+        for field_name, field in self.fields.items():
+            if isinstance(field, forms.ChoiceField) and field_name not in ['unidad', 'operador']:
+                field.widget.attrs.update({'class': 'form-select form-select-sm'})
+                field.required = True
+            elif isinstance(field.widget, forms.Textarea):
+                field.widget.attrs.update({
+                    'class': 'form-control observation-field',
+                    'rows': 2,
+                    'placeholder': 'Describir el problema detalladamente...'
+                })
+            elif isinstance(field, forms.ImageField):
+                field.widget.attrs.update({
+                    'class': 'form-control evidence-field',
+                })
+
+class LlantasInspeccionForm(forms.ModelForm):
+    """Formulario para la cabecera de la inspección de llantas (Admin)."""
+    class Meta:
+        model = LlantasInspeccion
+        fields = ['unidad', 'km']
+        widgets = {
+            'unidad': forms.Select(attrs={'class': 'form-select'}),
+            'km': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+class LlantasKmForm(forms.Form):
+    """Formulario para capturar y validar el kilometraje de la unidad."""
+    km = forms.IntegerField(
+        label="Kilometraje de la Unidad",
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.unidad = kwargs.pop('unidad', None)
+        super().__init__(*args, **kwargs)
+
+    def clean_km(self):
+        km_ingresado = self.cleaned_data.get('km')
+        if self.unidad and km_ingresado is not None:
+            if km_ingresado <= self.unidad.km_actual:
+                raise ValidationError(
+                    f"El kilometraje debe ser mayor al último registrado ({self.unidad.km_actual} km)."
+                )
+        return km_ingresado
+
+class LlantaDetalleForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Hacemos todos los campos opcionales para que el formulario siempre sea válido si está vacío.
+        for field in self.fields.values():
+            field.required = False
+            
+        self.fields['posicion'].widget = forms.HiddenInput()
+        self.fields['medida'].initial = '11R22.5'
+        self.fields['medida'].widget.attrs.update({'class': 'form-control text-uppercase'})
+        placeholders = {'mm': 'MM', 'marca': 'Marca', 'modelo': 'Modelo', 'presion': 'PSI'}
+        for name, placeholder in placeholders.items():
+            field = self.fields[name]
+            field.widget.attrs.update({'class': 'form-control', 'placeholder': placeholder})
+            field.label = ''
+            if name in ['marca', 'modelo']: field.widget.attrs['class'] += ' text-uppercase'
+    
+    # --- MÉTODO 'clean' ELIMINADO ---
+    # Al quitar el método 'clean', eliminamos la regla que obligaba a llenar todos 
+    # los campos de una fila si se llenaba uno. Ahora las filas pueden estar 
+    # vacías o parcialmente llenas sin generar un error de validación.
+
+    class Meta:
+        model = LlantaDetalle
+        fields = ['posicion', 'mm', 'marca', 'modelo', 'medida', 'presion']
+    
+class AjusteInventarioForm(forms.ModelForm):
+    
+    def clean_cantidad(self):
+        """Valida que la cantidad ingresada sea siempre un número positivo."""
+        cantidad = self.cleaned_data.get('cantidad')
+        if cantidad is not None and cantidad <= 0:
+            raise ValidationError("La cantidad debe ser un número positivo.")
+        return cantidad
+
+    class Meta:
+        model = AjusteInventario
+        fields = ['tipo_suministro', 'tipo_ajuste', 'cantidad', 'motivo']
+        widgets = {
+            'tipo_suministro': forms.Select(attrs={'class': 'form-select'}),
+            'tipo_ajuste': forms.Select(attrs={'class': 'form-select'}),
+            'cantidad': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 50.5'}),
+            'motivo': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+        
+class AsignacionRevisionForm(forms.ModelForm):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filtra para mostrar solo usuarios en los grupos 'Tecnico' o 'Encargado'
+        tecnicos_group = Group.objects.get(name='Tecnico')
+        encargados_group = Group.objects.get(name='Encargado')
+        self.fields['tecnico_asignado'].queryset = User.objects.filter(
+            Q(groups=tecnicos_group) | Q(groups=encargados_group)
+        ).distinct()
+
+    class Meta:
+        model = AsignacionRevision
+        fields = ['unidad', 'tecnico_asignado', 'fecha_revision']
+        widgets = {
+            'unidad': forms.Select(attrs={'class': 'form-select'}),
+            'tecnico_asignado': forms.Select(attrs={'class': 'form-select'}),
+            'fecha_revision': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        }

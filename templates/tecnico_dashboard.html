@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container text-center">
+    <div class="card p-5 mx-auto" style="max-width: 600px;">
+        <i class="fas fa-user-cog fa-4x text-primary mb-4"></i>
+        <h1 class="page-title">Bienvenido, {{ user.get_full_name|default:user.username }}</h1>
+        <p class="lead text-muted mb-4">
+            Desde aquí puedes iniciar el proceso de inspección y registro para las unidades.
+        </p>
+        <a href="{% url 'tecnico-seleccionar-unidad' %}" class="btn btn-primary btn-lg">
+            <i class="fas fa-play-circle me-2"></i> Iniciar Proceso de Inspección
+        </a>
+    </div>
+</div>
+{% endblock %}
