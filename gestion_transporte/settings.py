@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import dj_database_url # Importar dj_database_url al inicio
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,9 +24,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY')
 
+# ==============================================================================
+# CONFIGURACIÓN DE DEPURACIÓN Y HOSTS (DINÁMICA)
+# ==============================================================================
+# Detecta si estamos en el entorno de producción de Render
+ON_RENDER = os.getenv('RENDER') == 'true'
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-ALLOWED_HOSTS = ["https://proyecto-migmar-a5fd.onrender.com"]
+DEBUG = not ON_RENDER
+
+ALLOWED_HOSTS = []
+
+if ON_RENDER:
+    # Si estamos en Render, confiamos en el hostname que Render nos da
+    RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+    if RENDER_EXTERNAL_HOSTNAME:
+        ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+else:
+    # Para desarrollo local
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -37,12 +54,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'flota', # Añadir nuestra app
+    'flota', # Nuestra app
     'django.contrib.humanize',
     'widget_tweaks',
+    'storages', # <--- AÑADIDO: Para la integración con S3
 ]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # --- AÑADIDO: Para servir archivos estáticos en producción ---
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # -----------------------------------------------------------
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -56,7 +78,7 @@ ROOT_URLCONF = 'gestion_transporte.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')], # Añadir esta línea
+        'DIRS': [os.path.join(BASE_DIR, 'templates')], # Directorio de plantillas base
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -75,14 +97,16 @@ WSGI_APPLICATION = 'gestion_transporte.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-import dj_database_url
-import os
-
-if os.getenv("RENDER"):
+if ON_RENDER:
+    # Configuración de la base de datos de producción (Render)
     DATABASES = {
-        'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600 # Opcional: mantiene las conexiones vivas por 10 min
+        )
     }
 else:
+    # Configuración de la base de datos de desarrollo (local)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -90,63 +114,121 @@ else:
         }
     }
 
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i1n/
 
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'America/Monterrey' # <--- CAMBIA ESTA LÍNEA
-
+LANGUAGE_CODE = 'es-mx' # Cambiado a español de México
+TIME_ZONE = 'America/Monterrey'
 USE_I18N = True
-
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
+# ==============================================================================
+# ARCHIVOS ESTÁTICOS Y DE MEDIOS (Static & Media)
+# ==============================================================================
 
+# --- Configuración de Archivos Estáticos (CSS, JS) ---
 STATIC_URL = 'static/'
+# Directorio para archivos estáticos en desarrollo
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+# Directorio donde 'collectstatic' pondrá los archivos para producción
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# --- Configuración de Archivos de Medios (Subidos por el usuario) ---
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# No se usa MEDIA_ROOT en producción con S3
+
+# --- Configuración de Almacenamiento en S3 (para Boto3 y Django-Storages) ---
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME')
+AWS_MEDIA_LOCATION = os.getenv('AWS_MEDIA_LOCATION', 'media') # Directorio 'media' dentro del bucket
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+AWS_DEFAULT_ACL = 'public-read' # Para que los archivos subidos sean visibles
+AWS_S3_FILE_OVERWRITE = False # No sobrescribir archivos con el mismo nombre
+AWS_QUERYSTRING_AUTH = False # No usar URLs firmadas (queremos URLs públicas)
+
+# --- Configuración de STORAGES (Django 4.2+) ---
+if ON_RENDER:
+    # --- Configuración de PRODUCCIÓN (S3 para Medios, Whitenoise para Estáticos) ---
+    STORAGES = {
+        "default": {
+            # Backend para MEDIA (ImageField, FileField).
+            # Esto hace que {{ object.foto.url }} funcione con S3.
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "location": AWS_MEDIA_LOCATION,
+                "file_overwrite": AWS_S3_FILE_OVERWRITE,
+                "default_acl": AWS_DEFAULT_ACL,
+            },
+        },
+        "staticfiles": {
+            # Backend para STATIC (CSS, JS) en producción.
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+    # La URL de medios debe apuntar a S3
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_MEDIA_LOCATION}/'
+else:
+    # --- Configuración de DESARROLLO (Archivos locales) ---
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    # En desarrollo, los medios se sirven desde el disco local
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# ==============================================================================
+# REDIRECCIONES Y SEGURIDAD
+# ==============================================================================
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = '/'
 
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# --- NO DEBE HABER NINGÚN CORCHETE '}' EXTRA AQUÍ ---
+# Orígenes de confianza para CSRF
 CSRF_TRUSTED_ORIGINS = [
-    "https://*.ngrok-free.app",       # para cualquier túnel de ngrok
-    "https://d92af68bad28.ngrok-free.app",
-    "https://proyecto-migmar-a5fd.onrender.com"# opcional, tu túnel actual
+    "https://*.ngrok-free.app", # Para cualquier túnel de ngrok
+    "https://proyecto-migmar-a5fd.onrender.com", # Tu dominio de Render
 ]
+if ON_RENDER:
+    # Añadir el dominio de Render dinámicamente
+    RENDER_EXTERNAL_URL = os.environ.get('RENDER_EXTERNAL_URL')
+    if RENDER_EXTERNAL_URL:
+        CSRF_TRUSTED_ORIGINS.append(RENDER_EXTERNAL_URL)
 
+# Configuraciones de seguridad para producción
+if ON_RENDER:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000 # 1 año
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+
+# ==============================================================================
+# CONFIGURACIONES DE LA APLICACIÓN (FLOTA)
+# ==============================================================================
 
 INVENTORY_ALERT_SETTINGS = {
     'DIESEL': {
@@ -163,12 +245,7 @@ INVENTORY_ALERT_SETTINGS = {
     },
 }
 
-# ==============================================================================
-# CONFIGURACIÓN DEL SERVIDOR DE CORREO (EJEMPLO CON GMAIL)
-# ==============================================================================
-# ¡IMPORTANTE! Reemplaza estos valores con tus credenciales reales.
-# Si usas Gmail, necesitarás generar una "Contraseña de aplicación".
-# ==============================================================================
+# Configuración del servidor de correo
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -177,6 +254,7 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = 'Flota <estadisticas@transportesmigmar.com>'
 
+# Configuración de Twilio
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
 TWILIO_WHATSAPP_FROM = 'whatsapp:+14155238886'
@@ -185,3 +263,5 @@ WHATSAPP_RECIPIENTS = [
     'whatsapp:+528180298767',
     'whatsapp:+528123465830'
 ]
+
+# --- LA LLAVE '}' EXTRA QUE ESTABA AQUÍ HA SIDO ELIMINADA ---
