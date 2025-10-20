@@ -40,6 +40,12 @@ if ON_RENDER:
     RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
     if RENDER_EXTERNAL_HOSTNAME:
         ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    
+    # --- AÑADIR ESTA LÍNEA ---
+    # Añadimos el dominio explícitamente como respaldo seguro
+    ALLOWED_HOSTS.append('proyecto-migmar-a5fd.onrender.com')
+    # -------------------------
+
 else:
     # Para desarrollo local
     ALLOWED_HOSTS = ['localhost', '127.0.0.1']
