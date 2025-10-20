@@ -37,6 +37,72 @@ from django.http import JsonResponse
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin # Asegúrate que UserPassesTestMixin esté importado
 from .alerts import send_on_demand_status_report # <-- NUEVO IMPORT
 
+# === IMPORTS ADICIONALES PARA CARGA MANUAL A S3 ===
+import boto3
+from botocore.exceptions import BotoCoreError, NoCredentialsError
+from django.conf import settings
+import os
+# ===================================================
+
+
+# ==============================================================================
+# === NUEVAS FUNCIONES AUXILIARES PARA GESTIONAR ARCHIVOS EN S3 MANUALMENTE ===
+# ==============================================================================
+
+def _subir_archivo_a_s3(archivo_obj, s3_ruta_relativa):
+    """
+    Sube un archivo a S3.
+    - `s3_ruta_relativa` es la ruta SIN 'media/' (ej: 'flota/checklists/foto.jpg').
+    - Devuelve la misma ruta relativa si tiene éxito, para guardarla en la DB.
+    """
+    try:
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        
+        # Boto3 necesita la ruta completa (Key) dentro del bucket
+        full_s3_path = f"{settings.AWS_MEDIA_LOCATION}/{s3_ruta_relativa}"
+
+        # Asegurarse de que el archivo esté al inicio
+        archivo_obj.seek(0)
+        
+        s3_client.upload_fileobj(
+            archivo_obj,
+            settings.AWS_STORAGE_BUCKET_NAME,
+            full_s3_path
+        )
+        return s3_ruta_relativa
+        
+    except (BotoCoreError, NoCredentialsError, Exception) as e:
+        print(f"Error al subir el archivo a S3: {e}")
+        return None
+
+def _eliminar_archivo_de_s3(ruta_completa_s3):
+    """
+    Elimina un archivo de S3.
+    - `ruta_completa_s3` es la ruta que Django provee (ej: 'media/entradas/foto.jpg'),
+      que es lo que Boto3 necesita como 'Key'.
+    """
+    if not ruta_completa_s3:
+        return
+    try:
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_S3_REGION_NAME
+        )
+        s3_client.delete_object(
+            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+            Key=str(ruta_completa_s3)
+        )
+    except (BotoCoreError, NoCredentialsError, Exception) as e:
+        print(f"Error al eliminar archivo antiguo de S3: {e}")
+
+
 # ===================================================================
 # 1. PERMISSIONS AND ROLE LOGIC
 # ===================================================================
@@ -677,11 +743,18 @@ class ChecklistDetailView(AdminRequiredMixin, DetailView):
                 # Obtenemos el nombre del campo de observación correspondiente
                 obs_field_name = f"{field.name}_obs"
                 
+                # === INICIO LÓGICA S3 ===
+                # Obtenemos el campo de foto
+                foto_field_name = f"{field.name}_foto"
+                foto_obj = getattr(checklist, foto_field_name, None)
+                # === FIN LÓGICA S3 ===
+
                 # Creamos un diccionario con la información limpia para el template
                 items_procesados.append({
                     'componente': field.verbose_name.title(),
                     'estado': getattr(checklist, field.name, ''),
                     'observacion': getattr(checklist, obs_field_name, "Sin observación."),
+                    'foto': foto_obj # Pasamos el objeto de foto (o None)
                 })
 
         # Agregamos la lista ya procesada al contexto
@@ -717,10 +790,46 @@ class ChecklistCreateView(AdminRequiredMixin, CreateView):
                     # --- FIN DE LÓGICA MODIFICADA ---
         context['structured_form'] = structured_form
         return context
+
+    # === INICIO: MÉTODO MODIFICADO PARA S3 MANUAL ===
     def form_valid(self, form):
-        form.instance.tecnico = self.request.user
-        messages.success(self.request, "Checklist successfully created.")
-        return super().form_valid(form)
+        # Asigna el tecnico ANTES de save(commit=False)
+        form.instance.tecnico = self.request.user 
+        try:
+            checklist = form.save(commit=False)
+            unidad = checklist.unidad 
+            
+            # La fecha se asigna por 'default=timezone.now' en el modelo
+            # o por el valor del formulario.
+            fecha_str = checklist.fecha.strftime('%Y-%m-%d')
+            
+            # Iterar y subir archivos
+            for field_name, archivo in self.request.FILES.items():
+                _nombre_base, extension = os.path.splitext(archivo.name)
+                # Define una ruta única en S3
+                s3_path = f"flota/checklists/{unidad.nombre}/{fecha_str}/{field_name}{extension}"
+                ruta_guardada = _subir_archivo_a_s3(archivo, s3_path)
+                
+                if ruta_guardada:
+                    setattr(checklist, field_name, ruta_guardada)
+                else:
+                    messages.error(self.request, f"Error al subir el archivo {field_name}.")
+                    return self.form_invalid(form)
+
+            # Guardar el objeto en la DB
+            checklist.save() 
+            
+            # Asignar el objeto guardado a self.object para la redirección
+            self.object = checklist 
+            
+            messages.success(self.request, "Checklist successfully created.")
+            # Usar get_success_url() para la redirección
+            return redirect(self.get_success_url())
+        
+        except Exception as e:
+            messages.error(self.request, f"Ocurrió un error al guardar: {e}")
+            return self.form_invalid(form)
+    # === FIN: MÉTODO MODIFICADO ===
 
 class ChecklistUpdateView(AdminRequiredMixin, UpdateView):
     model = ChecklistInspeccion
@@ -751,14 +860,78 @@ class ChecklistUpdateView(AdminRequiredMixin, UpdateView):
                     # --- FIN DE LÓGICA MODIFICADA ---
         context['structured_form'] = structured_form
         return context
+
+    # === INICIO: MÉTODO MODIFICADO PARA S3 MANUAL ===
     def form_valid(self, form):
-        messages.success(self.request, "Checklist successfully updated.")
-        return super().form_valid(form)
+        try:
+            checklist_original = self.get_object()
+            checklist = form.save(commit=False)
+            unidad = checklist.unidad
+            fecha_str = checklist.fecha.strftime('%Y-%m-%d')
+
+            # Iterar y subir/actualizar archivos
+            for field_name, archivo in self.request.FILES.items():
+                # 1. Eliminar el archivo antiguo
+                ruta_antigua_field = getattr(checklist_original, field_name)
+                if ruta_antigua_field and hasattr(ruta_antigua_field, 'name'):
+                    _eliminar_archivo_de_s3(ruta_antigua_field.name)
+                    
+                # 2. Subir el archivo nuevo
+                _nombre_base, extension = os.path.splitext(archivo.name)
+                s3_path = f"flota/checklists/{unidad.nombre}/{fecha_str}/{field_name}{extension}"
+                ruta_guardada = _subir_archivo_a_s3(archivo, s3_path)
+                
+                if ruta_guardada:
+                    setattr(checklist, field_name, ruta_guardada)
+                else:
+                    messages.error(self.request, f"Error al actualizar el archivo {field_name}.")
+                    return self.form_invalid(form)
+
+            # Guardar el objeto en la DB
+            checklist.save()
+            
+            # Guardar relaciones ManyToMany si las hubiera
+            form.save_m2m() 
+            
+            self.object = checklist
+            messages.success(self.request, "Checklist successfully updated.")
+            return redirect(self.get_success_url())
+
+        except Exception as e:
+            messages.error(self.request, f"Ocurrió un error al actualizar: {e}")
+            return self.form_invalid(form)
+    # === FIN: MÉTODO MODIFICADO ===
 
 class ChecklistDeleteView(AdminRequiredMixin, DeleteView):
     model = ChecklistInspeccion
     template_name = 'generic_confirm_delete.html'
     success_url = reverse_lazy('checklist-list')
+
+    # === INICIO: MÉTODO AÑADIDO PARA BORRADO MANUAL EN S3 ===
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        
+        try:
+            # Iterar sobre todos los campos del modelo
+            for field in ChecklistInspeccion._meta.get_fields():
+                # Buscar campos de archivo (asumiendo que terminan en _foto)
+                if field.name.endswith('_foto'):
+                    file_field = getattr(self.object, field.name)
+                    # file_field.name contiene la ruta completa 'media/flota/...'
+                    if file_field and hasattr(file_field, 'name'):
+                        _eliminar_archivo_de_s3(file_field.name)
+            
+            # Llamar al método de borrado original de la base de datos
+            response = super().delete(request, *args, **kwargs)
+            
+            messages.success(request, f"Checklist para '{self.object.unidad}' eliminado exitosamente.")
+            return response
+            
+        except Exception as e:
+            messages.error(request, f"Ocurrió un error al eliminar el checklist y sus archivos: {e}")
+            return redirect(self.get_success_url())
+    # === FIN: MÉTODO AÑADIDO ===
+
 
 # --- Tire Inspection CRUD ---
 class LlantasInspeccionListView(AdminRequiredMixin, ListView):
@@ -1037,35 +1210,55 @@ class ProcesoChecklistView(IniciaProcesoRequiredMixin, FormView):
         
         return initial
 
+    # === INICIO: MÉTODO MODIFICADO PARA S3 MANUAL ===
     def form_valid(self, form):
         """
-        --- MÉTODO CORREGIDO Y SIMPLIFICADO ---
-        Esta es la versión que funciona. Guarda el formulario directamente, 
-        permitiendo que el ModelForm maneje de forma automática tanto los datos
-        del checklist como TODOS los archivos de imagen adjuntos.
+        Guarda el formulario manualmente, subiendo archivos a S3
+        y manejando la transacción de forma atómica.
         """
         try:
-            # transaction.atomic() asegura que toda la operación sea exitosa o falle junta.
             with transaction.atomic():
-                # 1. Asigna los datos que no vienen del formulario (usuario y unidad)
+                # 1. Asigna los datos que no vienen del formulario
                 form.instance.tecnico = self.request.user
                 form.instance.unidad = get_object_or_404(Unidad, pk=self.kwargs['unidad_pk'])
                 
-                # 2. ¡Esta es la línea clave! Guarda todo, incluyendo las imágenes.
-                # Django automáticamente toma los archivos de request.FILES por ti.
-                checklist_obj = form.save()
+                # 2. Crea el objeto en memoria (aún no en la BD)
+                checklist_obj = form.save(commit=False)
+                
+                # 3. Iterar y subir archivos
+                # La fecha ya debe estar seteada por el modelo (default=timezone.now)
+                fecha_str = checklist_obj.fecha.strftime('%Y-%m-%d')
+                
+                for field_name, archivo in self.request.FILES.items():
+                    _nombre_base, extension = os.path.splitext(archivo.name)
+                    # Define la ruta de S3
+                    s3_path = f"flota/checklists/{checklist_obj.unidad.nombre}/{fecha_str}/{field_name}{extension}"
+                    
+                    ruta_guardada = _subir_archivo_a_s3(archivo, s3_path)
+                    
+                    if ruta_guardada:
+                        # Asigna la ruta de S3 al campo del modelo
+                        setattr(checklist_obj, field_name, ruta_guardada)
+                    else:
+                        messages.error(self.request, f"Error al subir el archivo {field_name}.")
+                        # Esto abortará la transacción atómica
+                        raise Exception(f"Fallo al subir {field_name}")
+                
+                # 4. Ahora sí, guardar el objeto en la base de datos
+                checklist_obj.save()
             
-            # 3. Guarda el ID del checklist recién creado en la sesión para el siguiente paso.
+            # 5. Si todo salió bien, guarda el ID en la sesión
             self.request.session['proceso_checklist_id'] = checklist_obj.id
             messages.success(self.request, "Checklist guardado. Ahora, por favor, complete la inspección de llantas.")
             
-            # 4. Redirige al siguiente paso del proceso.
+            # 6. Redirige al siguiente paso del proceso.
             return redirect('proceso-llantas', unidad_pk=self.kwargs['unidad_pk'])
 
         except Exception as e:
-            # Es una buena práctica capturar errores inesperados.
+            # Captura el error de la subida de S3 o cualquier otro.
             messages.error(self.request, f"Ocurrió un error al guardar el checklist: {e}")
             return self.form_invalid(form)
+    # === FIN: MÉTODO MODIFICADO ===
         
 class ProcesoLlantasView(IniciaProcesoRequiredMixin, TemplateView):
     """Step 3 (Common): Fill out Tire form and send to PENDING."""
@@ -1435,7 +1628,10 @@ class UnidadDetailView(AdminRequiredMixin, DetailView):
                             'observacion': observacion,
                         })
 
-                        if foto and foto.url:
+                        # === LÓGICA S3 ===
+                        # El objeto 'foto' ahora es un FileField que podría
+                        # tener una URL si está configurado S3
+                        if foto and hasattr(foto, 'url') and foto.url:
                             fotos_evidencia.append({
                                 'componente': nombre_amigable,
                                 'url': foto.url,
@@ -1510,7 +1706,8 @@ def _get_unidad_report_context(request, unidad):
                         'tecnico': inspeccion.tecnico.get_full_name() or inspeccion.tecnico.username,
                     })
 
-                    if foto and hasattr(foto, 'url'):
+                    # === LÓGICA S3 ===
+                    if foto and hasattr(foto, 'url') and foto.url:
                         fotos_evidencia.append({
                             'componente': nombre_amigable,
                             'url': request.build_absolute_uri(foto.url),
