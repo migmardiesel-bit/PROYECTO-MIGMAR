@@ -166,11 +166,11 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'migmar.diesel@gmail.com'       # <-- TU CORREO
-EMAIL_HOST_PASSWORD = 'kgho swxx jzno gvyw'  # <-- TU CONTRASEÑA DE APLICACIÓN
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = 'Flota <estadisticas@transportesmigmar.com>'
 
-TWILIO_ACCOUNT_SID = 'ACf7a47bedd40c3770f78e1a3cc105687e'  # <-- Tu Account SID de Twilio
-TWILIO_AUTH_TOKEN = '8a06a91d900d9b2d2fc7f72bdd068d96'     # <-- Tu Auth Token de Twilio
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
 TWILIO_WHATSAPP_FROM = 'whatsapp:+14155238886'
 WHATSAPP_RECIPIENTS = [
     'whatsapp:+528182807927',
