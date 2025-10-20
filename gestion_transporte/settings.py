@@ -25,7 +25,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-ALLOWED_HOSTS = ["192.168.15.22","*","https://d92af68bad28.ngrok-free.app"]
+ALLOWED_HOSTS = ["https://proyecto-migmar-a5fd.onrender.com"]
 
 
 # Application definition
@@ -75,13 +75,20 @@ WSGI_APPLICATION = 'gestion_transporte.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+import dj_database_url
+import os
 
+if os.getenv("RENDER"):
+    DATABASES = {
+        'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -136,7 +143,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # --- NO DEBE HABER NINGÚN CORCHETE '}' EXTRA AQUÍ ---
 CSRF_TRUSTED_ORIGINS = [
     "https://*.ngrok-free.app",       # para cualquier túnel de ngrok
-    "https://d92af68bad28.ngrok-free.app",  # opcional, tu túnel actual
+    "https://d92af68bad28.ngrok-free.app",
+    "https://proyecto-migmar-a5fd.onrender.com"# opcional, tu túnel actual
 ]
 
 
