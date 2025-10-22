@@ -33,7 +33,8 @@
             {% if show_general_export_button %}
             <div class="row mt-3">
                 <div class="col-12 col-md-auto">
-                    <a href="{% url export_url_name %}?start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-success w-100">
+                    {# Construimos la URL con todos los filtros activos #}
+                    <a href="{% url export_url_name %}?start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&unidad={{ selected_unidad.pk|default:'' }}&tecnico={{ selected_tecnico.pk|default:'' }}&tipo_suministro={{ selected_tipo_suministro|default:'' }}" class="btn btn-success w-100">
                         <i class="fas fa-file-excel"></i> Exportar a Excel
                     </a>
                 </div>
@@ -45,7 +46,21 @@
     {% if titulo == 'Unidades' %}
     <div class="card shadow mb-4">
         <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-filter me-2"></i>Filtros de Búsqueda</h6></div>
-        <div class="card-body"><form method="get" action=""><div class="row g-3 align-items-end"><div class="col-lg-6 col-md-12"><label for="search_query" class="form-label small">Buscar por nombre:</label><input type="text" id="search_query" class="form-control" name="q" placeholder="Buscar por nombre o alias..." value="{{ search_query }}"></div><div class="col-lg-4 col-md-12"><label for="tipo_unidad" class="form-label small">Filtrar por tipo:</label><select id="tipo_unidad" name="tipo_unidad" class="form-select"><option value="">-- Todos los Tipos --</option><option value="S" {% if selected_tipo == 'S' %}selected{% endif %}>Seca</option><option value="R" {% if selected_tipo == 'R' %}selected{% endif %}>Refrigerada</option><option value="A" {% if selected_tipo == 'A' %}selected{% endif %}>Refrigerada/Seca</option></select></div><div class="col-lg-2 col-md-12 text-end"><div class="d-flex justify-content-end"><a href="{% url 'unidad-list' %}" class="btn btn-outline-secondary me-2">Limpiar</a><button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Buscar</button></div></div></div></form></div>
+        <div class="card-body">
+            <form method="get" action="">
+                <div class="row g-3 align-items-end">
+                    <div class="col-lg-6 col-md-12"><label for="search_query" class="form-label small">Buscar por nombre:</label><input type="text" id="search_query" class="form-control" name="q" placeholder="Buscar por nombre o alias..." value="{{ search_query }}"></div><div class="col-lg-4 col-md-12"><label for="tipo_unidad" class="form-label small">Filtrar por tipo:</label><select id="tipo_unidad" name="tipo_unidad" class="form-select"><option value="">-- Todos los Tipos --</option><option value="S" {% if selected_tipo == 'S' %}selected{% endif %}>Seca</option><option value="R" {% if selected_tipo == 'R' %}selected{% endif %}>Refrigerada</option><option value="A" {% if selected_tipo == 'A' %}selected{% endif %}>Refrigerada/Seca</option></select></div><div class="col-lg-2 col-md-12 text-end"><div class="d-flex justify-content-end"><a href="{% url 'unidad-list' %}" class="btn btn-outline-secondary me-2">Limpiar</a><button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Buscar</button></div></div></div></form>
+
+            {% if show_general_export_button %}
+            <div class="row mt-3">
+                <div class="col-12 col-md-auto">
+                    <a href="{% url export_url_name %}?q={{ search_query|default:'' }}&tipo_unidad={{ selected_tipo|default:'' }}" class="btn btn-success w-100">
+                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
     {% endif %}
     {% if titulo == 'Compras de Suministros' %}
@@ -55,10 +70,11 @@
             {% if show_general_export_button %}
             <div class="row mt-3">
                 <div class="col-12 col-md-auto">
-                    <a href="{% url export_url_name %}?start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-success w-100">
+                    {# Construimos la URL con todos los filtros activos #}
+                    <a href="{% url download_cargadiesel_reporte%}?start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&unidad={{ selected_unidad.pk|default:'' }}&tecnico={{ selected_tecnico.pk|default:'' }}&tipo_suministro={{ selected_tipo_suministro|default:'' }}" class="btn btn-success w-100">
                         <i class="fas fa-file-excel"></i> Exportar a Excel
                     </a>
-                </div>
+                    </div>
             </div>
             {% endif %}
         </div>

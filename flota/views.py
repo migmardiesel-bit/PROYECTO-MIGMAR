@@ -2,6 +2,7 @@
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy, reverse
+
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, TemplateView, DeleteView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required
@@ -322,11 +323,20 @@ class UnidadListView(AdminRequiredMixin, ListView):
         if tipo_filter:
             queryset = queryset.filter(tipo=tipo_filter)
         return queryset
+        
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({'titulo': 'Unidades', 'url_crear': 'unidad-create', 'headers': ['#', 'Nombre', 'Marca/Modelo', 'Placas', 'KM Actual', 'Tipo'], 'url_detail_name': 'unidad-detail', 'url_update_name': 'unidad-update', 'url_delete_name': 'unidad-delete'})
         context['search_query'] = self.request.GET.get('q', '')
         context['selected_tipo'] = self.request.GET.get('tipo_unidad', '')
+        
+        # ========= INICIO DEL CÓDIGO A AGREGAR =========
+        # Habilita el botón de exportación general en la plantilla
+        context['show_general_export_button'] = True
+        # Define la URL a la que apuntará el botón
+        context['export_url_name'] = 'unidades-export-excel'
+        # ========= FIN DEL CÓDIGO A AGREGAR =========
+        
         return context
 
 class UnidadCreateView(AdminRequiredMixin, CreateView):
@@ -458,6 +468,13 @@ class CargaDieselListView(AdminRequiredMixin, ListView):
         # Si se seleccionó una unidad, la obtenemos para mostrarla en el campo Select2
         if selected_unidad_id := self.request.GET.get('unidad'):
             context['selected_unidad'] = Unidad.objects.filter(pk=selected_unidad_id).first()
+        
+        # ========= INICIO DEL CÓDIGO A AGREGAR =========
+        # Habilita el botón de exportación general en la plantilla
+        context['show_general_export_button'] = True
+        # Define la URL a la que apuntará el botón
+        context['export_url_name'] = 'cargadiesel-export-excel'
+        # ========= FIN DEL CÓDIGO A AGREGAR =========
             
         return context
 
@@ -1226,12 +1243,20 @@ class ProcesoChecklistView(IniciaProcesoRequiredMixin, FormView):
                 checklist_obj = form.save(commit=False)
                 
                 # 3. Iterar y subir archivos
-                # La fecha ya debe estar seteada por el modelo (default=timezone.now)
-                fecha_str = checklist_obj.fecha.strftime('%Y-%m-%d')
+                
+                # === INICIO DE LA CORRECCIÓN ===
+                # Obtenemos la fecha actual AHORA.
+                # El campo `checklist_obj.fecha` es 'None' en este punto
+                # porque `auto_now_add=True` solo lo asigna cuando se
+                # ejecuta el .save() en la base de datos.
+                # Usamos timezone.now() para la fecha.
+                fecha_actual = timezone.now()
+                fecha_str = fecha_actual.strftime('%Y-%m-%d')
+                # === FIN DE LA CORRECCIÓN ===
                 
                 for field_name, archivo in self.request.FILES.items():
                     _nombre_base, extension = os.path.splitext(archivo.name)
-                    # Define la ruta de S3
+                    # Define la ruta de S3 usando la fecha_str que acabamos de crear
                     s3_path = f"flota/checklists/{checklist_obj.unidad.nombre}/{fecha_str}/{field_name}{extension}"
                     
                     ruta_guardada = _subir_archivo_a_s3(archivo, s3_path)
@@ -1245,6 +1270,9 @@ class ProcesoChecklistView(IniciaProcesoRequiredMixin, FormView):
                         raise Exception(f"Fallo al subir {field_name}")
                 
                 # 4. Ahora sí, guardar el objeto en la base de datos
+                # En este punto, `auto_now_add=True` asignará la fecha
+                # a checklist_obj.fecha. Será casi idéntica a la que
+                # usamos para la ruta de S3.
                 checklist_obj.save()
             
             # 5. Si todo salió bien, guarda el ID en la sesión
@@ -2178,3 +2206,183 @@ def enviar_reporte_estado(request):
         messages.error(request, f"Ocurrió un error al intentar enviar el reporte: {e}")
         
     return redirect('dashboard')
+
+
+@login_required
+def download_cargadiesel_reporte(request):
+    """
+    Genera y sirve un reporte en Excel con el registro de todas las
+    cargas de diésel (motor y thermo), incluyendo el tipo de unidad.
+    """
+    if not es_admin(request.user):
+        raise PermissionDenied("No tiene permiso para exportar este reporte.")
+
+    # 1. Obtener los datos (aplicando los mismos filtros de la vista CargaDieselListView)
+    # Usamos select_related('unidad') para optimizar la consulta
+    queryset = CargaDiesel.objects.select_related('unidad').order_by('-fecha')
+    
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+    unidad_id = request.GET.get('unidad')
+
+    if start_date_str and end_date_str:
+        # Asegurarse de que las fechas no estén vacías antes de filtrar
+        if start_date_str and end_date_str:
+             queryset = queryset.filter(fecha__date__range=[date.fromisoformat(start_date_str), date.fromisoformat(end_date_str)])
+    
+    if unidad_id:
+        queryset = queryset.filter(unidad_id=unidad_id)
+
+    # 2. Crear la respuesta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    filename = f"reporte_cargas_diesel_{timezone.now().strftime('%Y%m%d')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    # 3. Crear el libro y la hoja de trabajo
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Reporte Cargas Diesel"
+
+    # 4. Estilos
+    bold_font = Font(bold=True)
+    center_alignment = Alignment(horizontal='center', vertical='center')
+
+    # 5. Encabezados de la tabla
+    headers = [
+        'Fecha de Carga', 'Unidad', 'Tipo de Unidad', 
+        'Lts Motor', 'Lts Thermo', 'Total Litros'
+    ]
+    ws.append(headers)
+    
+    # Aplicar estilo a la cabecera
+    for cell in ws[1]:
+        cell.font = bold_font
+        cell.alignment = center_alignment
+
+    # 6. Poblar los datos
+    for carga in queryset:
+        # Formatear la fecha
+        fecha_carga = carga.fecha.astimezone(timezone.get_current_timezone()).strftime('%Y-%m-%d %H:%M')
+        
+        # Obtener datos de la carga
+        lts_motor = carga.lts_diesel or 0
+        lts_thermo = carga.lts_thermo or 0
+        total_litros = lts_motor + lts_thermo
+        
+        # Obtener datos de la unidad (ya precargada con select_related)
+        unidad_nombre = carga.unidad.nombre
+        tipo_legible = carga.unidad.get_tipo_display()
+        
+        ws.append([
+            fecha_carga,
+            unidad_nombre,
+            tipo_legible,
+            lts_motor,
+            lts_thermo,
+            total_litros
+        ])
+
+    # 7. Ajustar ancho de columnas
+    ws.column_dimensions['A'].width = 25  # Fecha
+    ws.column_dimensions['B'].width = 25  # Unidad
+    ws.column_dimensions['C'].width = 20  # Tipo de Unidad
+    ws.column_dimensions['D'].width = 15  # Lts Motor
+    ws.column_dimensions['E'].width = 15  # Lts Thermo
+    ws.column_dimensions['F'].width = 15  # Total Litros
+
+    # 8. Guardar y devolver
+    wb.save(response)
+    return response
+
+@login_required
+def download_unidades_excel(request):
+    """
+    Genera y sirve un reporte en Excel con el listado de unidades,
+    su tipo, KM actual y los detalles de su última carga de diésel.
+    """
+    if not es_admin(request.user):
+        raise PermissionDenied("No tiene permiso para exportar este reporte.")
+
+    # 1. Obtener los datos (aplicando los mismos filtros de la vista de lista)
+    queryset = Unidad.objects.order_by('nombre')
+    search_query = request.GET.get('q')
+    tipo_filter = request.GET.get('tipo_unidad')
+
+    if search_query:
+        queryset = queryset.filter(nombre__icontains=search_query)
+    if tipo_filter:
+        queryset = queryset.filter(tipo=tipo_filter)
+
+    # 2. Crear la respuesta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    filename = f"reporte_unidades_{timezone.now().strftime('%Y%m%d')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    # 3. Crear el libro y la hoja de trabajo
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Reporte de Unidades"
+
+    # 4. Estilos
+    bold_font = Font(bold=True)
+    center_alignment = Alignment(horizontal='center', vertical='center')
+
+    # 5. Encabezados de la tabla
+    headers = [
+        'Unidad', 'Tipo de Unidad', 'KM Actual', 
+        'Fecha Última Carga', 'Lts Motor (Últ Carga)', 
+        'Lts Thermo (Últ Carga)', 'Total Litros (Últ Carga)'
+    ]
+    ws.append(headers)
+    
+    # Aplicar estilo a la cabecera
+    for cell in ws[1]:
+        cell.font = bold_font
+        cell.alignment = center_alignment
+
+    # 6. Poblar los datos
+    for unidad in queryset:
+        tipo_legible = unidad.get_tipo_display()
+        
+        # Buscar la última carga de diésel para esta unidad
+        ultima_carga = CargaDiesel.objects.filter(unidad=unidad).order_by('-fecha').first()
+        
+        # Inicializar valores por defecto
+        fecha_ultima_carga = "N/A"
+        lts_motor = 0
+        lts_thermo = 0
+        total_litros = 0
+
+        if ultima_carga:
+            # Si se encontró una carga, obtener sus datos
+            fecha_ultima_carga = ultima_carga.fecha.astimezone(timezone.get_current_timezone()).strftime('%Y-%m-%d %H:%M')
+            lts_motor = ultima_carga.lts_diesel or 0
+            lts_thermo = ultima_carga.lts_thermo or 0
+            total_litros = lts_motor + lts_thermo
+        
+        ws.append([
+            unidad.nombre,
+            tipo_legible,
+            unidad.km_actual,
+            fecha_ultima_carga,
+            lts_motor,
+            lts_thermo,
+            total_litros
+        ])
+
+    # 7. Ajustar ancho de columnas
+    ws.column_dimensions['A'].width = 25  # Unidad
+    ws.column_dimensions['B'].width = 20  # Tipo de Unidad
+    ws.column_dimensions['C'].width = 15  # KM Actual
+    ws.column_dimensions['D'].width = 25  # Fecha Última Carga
+    ws.column_dimensions['E'].width = 20  # Lts Motor
+    ws.column_dimensions['F'].width = 20  # Lts Thermo
+    ws.column_dimensions['G'].width = 20  # Total Litros
+
+    # 8. Guardar y devolver
+    wb.save(response)
+    return response

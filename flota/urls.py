@@ -112,5 +112,6 @@ urlpatterns = [
     path('inspecciones/llantas/exportar/', download_llantas_general_excel, name='llantas-export-excel'),
     path('revisiones/cancelar/<int:pk>/', cancelar_revision, name='cancelar-revision'),
     path('reportes/enviar-estado/', enviar_reporte_estado, name='enviar-reporte-estado'),
-    
+    path('cargas/diesel/exportar-excel/', download_cargadiesel_reporte, name='cargadiesel-export-excel'),    
+    path('unidades/exportar-excel/', download_unidades_excel, name='unidades-export-excel'),
 ]

@@ -22,8 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
-
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-$c_s*b+$vvhn^df(bb$9np5tm189=9u*4gi%3vd9!jhxcr9_uy')
 # ==============================================================================
 # CONFIGURACIÓN DE DEPURACIÓN Y HOSTS (DINÁMICA)
 # ==============================================================================
@@ -41,14 +41,12 @@ if ON_RENDER:
     if RENDER_EXTERNAL_HOSTNAME:
         ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
     
-    # --- AÑADIR ESTA LÍNEA ---
     # Añadimos el dominio explícitamente como respaldo seguro
     ALLOWED_HOSTS.append('proyecto-migmar-a5fd.onrender.com')
-    # -------------------------
 
 else:
     # Para desarrollo local
-    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1','.ngrok-free.app']
 
 
 # Application definition
@@ -100,23 +98,33 @@ TEMPLATES = [
 WSGI_APPLICATION = 'gestion_transporte.wsgi.application'
 
 
+# ==============================================================================
+# BASE DE DATOS (DINÁMICA)
+# ==============================================================================
+
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 if ON_RENDER:
-    # Configuración de la base de datos de producción (Render)
+    # --- Configuración de PRODUCCIÓN (Render) ---
+    # Render configura automáticamente la variable de entorno DATABASE_URL
+    # dj_database_url la leerá y configurará la conexión.
     DATABASES = {
         'default': dj_database_url.config(
-            default=os.environ.get('DATABASE_URL'),
-            conn_max_age=600 # Opcional: mantiene las conexiones vivas por 10 min
+            # Opcional: Mantiene las conexiones abiertas por 600 segundos
+            conn_max_age=600,
+            # Render requiere SSL para sus conexiones de base de datos
+            ssl_require=True 
         )
     }
 else:
-    # Configuración de la base de datos de desarrollo (local)
+    # --- Configuración de DESARROLLO (Local) ---
+    # Usamos una base de datos SQLite simple para el desarrollo local.
+    # Se creará un archivo 'db.sqlite3' en la raíz del proyecto.
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / "db.sqlite3",
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 
@@ -214,7 +222,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Orígenes de confianza para CSRF
 CSRF_TRUSTED_ORIGINS = [
     "https://*.ngrok-free.app", # Para cualquier túnel de ngrok
-    "https://proyecto-migmar-a5fd.onrender.com", # Tu dominio de Render
+    "https://proyecto-migmar-a5fd.onrender.com",
+    'https://fed490745f3c.ngrok-free.app'# Tu dominio de Render
 ]
 if ON_RENDER:
     # Añadir el dominio de Render dinámicamente
@@ -246,7 +255,7 @@ INVENTORY_ALERT_SETTINGS = {
         'recipients': ['estadisticas@transportesmigmar.com', 'gerenciageneral@transportesmigmar.com'],
     },
     'ACEITE': {
-        'threshold': 90,   # Litros
+        'threshold': 90,    # Litros
         'recipients': ['estadisticas@transportesmigmar.com', 'gerenciageneral@transportesmigmar.com'],
     },
 }
@@ -269,5 +278,3 @@ WHATSAPP_RECIPIENTS = [
     'whatsapp:+528180298767',
     'whatsapp:+528123465830'
 ]
-
-# --- LA LLAVE '}' EXTRA QUE ESTABA AQUÍ HA SIDO ELIMINADA ---

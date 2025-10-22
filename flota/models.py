@@ -33,12 +33,15 @@ class Unidad(models.Model):
     tag = models.CharField(max_length=50, blank=True, null=True, verbose_name="TAG IAVE")
     km_actual = models.PositiveIntegerField(default=0, verbose_name="Kilometraje Actual")
 
+    # ========= ASEGÚRATE QUE ESTA LÍNEA ESTÉ AQUÍ =========
+    ultima_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Última Actualización")
+    # ======================================================
+
     def __str__(self):
         return self.nombre
 
     def get_absolute_url(self):
         return reverse('unidad-detail', kwargs={'pk': self.pk})
-
 # ===================================================================
 # 2. MODELOS DEPENDIENTES (QUE USAN 'UNIDAD' U 'OPERADOR')
 # ===================================================================
