@@ -116,4 +116,7 @@ urlpatterns = [
     path('unidades/exportar-excel/', download_unidades_excel, name='unidades-export-excel'),
     path('revisiones/corregir-checklist-mal/', corregir_checklist_mal_view, name='corregir-checklist-mal'),
     path('inventario/compras/exportar-excel/', download_comprasuministro_excel, name='comprasuministro-export-excel'),
+    path('api/checklist/corregir/<int:pk>/', api_corregir_falla_checklist, name='api-corregir-falla'),
+    path('unidades/<int:pk>/reporte-correcciones-pdf/', download_correcciones_report_pdf, name='unidad-reporte-correcciones-pdf'), # <--- THIS LINE
+    path('unidades/<int:pk>/reporte-correcciones-excel/', download_correcciones_report_excel, name='unidad-reporte-correcciones-excel'), # <-- And this one for Excel
 ]

@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <div class="row g-4">
-        <!-- Panel de Formulario -->
         <div class="col-xl-4 col-lg-5">
             <div class="card shadow-lg border-0 h-100">
                 <div class="card-header bg-gradient-primary text-white py-3">
@@ -21,7 +21,6 @@
                     <form method="post" class="needs-validation" novalidate>
                         {% csrf_token %}
                         
-                        <!-- Campo Unidad -->
                         <div class="mb-4">
                             <label for="{{ form.unidad.id_for_label }}" class="form-label fw-semibold">
                                 <i class="fas fa-bus me-2 text-primary"></i>Unidad
@@ -35,7 +34,6 @@
                             <div class="form-text">Seleccione la unidad a revisar</div>
                         </div>
                         
-                        <!-- Campo Fecha -->
                         <div class="mb-4">
                             <label for="{{ form.fecha_revision.id_for_label }}" class="form-label fw-semibold">
                                 <i class="fas fa-calendar-alt me-2 text-primary"></i>Fecha de Revisión
@@ -49,7 +47,6 @@
                             <div class="form-text">Programe la fecha de revisión</div>
                         </div>
                         
-                        <!-- Botón de envío -->
                         <button type="submit" class="btn btn-success w-100 py-3 rounded-pill fw-bold mt-3">
                             <i class="fas fa-plus-circle me-2"></i> Asignar Unidad
                         </button>
@@ -58,11 +55,10 @@
             </div>
         </div>
 
-        <!-- Panel de Asignaciones -->
         <div class="col-xl-8 col-lg-7">
             <div class="card shadow-lg border-0 h-100">
-                <div class="card-header bg-gradient-info text-white py-3">
-                    <div class="d-flex justify-content-between align-items-center">
+                 <div class="card-header bg-gradient-info text-white py-3">
+                     <div class="d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <div class="flex-shrink-0 bg-white bg-opacity-20 rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                                 <i class="fas fa-clipboard-list text-primary"></i>
@@ -89,7 +85,7 @@
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
-                            <thead class="table-dark">
+                             <thead class="table-dark">
                                 <tr>
                                     <th class="ps-4">Unidad</th>
                                     <th>Estado</th>
@@ -98,8 +94,13 @@
                             </thead>
                             <tbody>
                                 {% for asignacion in asignaciones_del_dia %}
-                                <tr class="{% if asignacion.status != 'PENDIENTE' %}table-active{% endif %}">
-                                    <!-- Columna Unidad -->
+                                <tr class="{% if asignacion.status != 'PENDIENTE' %}table-active{% endif %} 
+                                           {% if asignacion.bad_items_list %}table-warning-custom{% endif %}"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#checklistModal-{{ asignacion.pk }}" 
+                                    style="cursor: pointer;"
+                                    title="Clic para ver detalles del último checklist">
+
                                     <td class="ps-4">
                                         <div class="d-flex align-items-center">
                                             <div class="flex-shrink-0 bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
@@ -107,27 +108,28 @@
                                             </div>
                                             <div class="flex-grow-1 ms-3">
                                                 <strong class="fw-semibold">{{ asignacion.unidad.nombre }}</strong>
+                                                {% if asignacion.bad_items_list %}
+                                                    <span class="badge bg-danger rounded-pill ms-2" title="Esta unidad tiene fallas reportadas en su último checklist">
+                                                        <i class="fas fa-exclamation-triangle me-1"></i> {{ asignacion.bad_items_list|length }}
+                                                    </span>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </td>
                                     
-                                    <!-- Columna Estado -->
                                     <td>
                                         {% if asignacion.status == 'PENDIENTE' %}
                                             <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2">
                                                 <i class="fas fa-clock me-1"></i> Pendiente
                                             </span>
-                                        
                                         {% elif asignacion.status == 'EN_PROCESO' %}
                                             <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-3 py-2">
                                                 <i class="fas fa-cogs fa-spin me-1"></i> En Proceso
                                             </span>
-
                                         {% elif asignacion.status == 'TERMINADO' %}
                                             <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2">
                                                 <i class="fas fa-check-circle me-1"></i> Terminado
                                             </span>
-
                                         {% elif asignacion.status == 'CANCELADO' %}
                                             <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 py-2">
                                                 <i class="fas fa-ban me-1"></i> Cancelado
@@ -147,10 +149,10 @@
                                         {% endif %}
                                     </td>
                                     
-                                    <!-- Columna Acciones -->
                                     <td class="text-center pe-4">
-                                        {% if asignacion.status == 'PENDIENTE' %}
-                                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#cancelModal-{{ asignacion.pk }}">
+                                         {% if asignacion.status == 'PENDIENTE' %}
+                                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#cancelModal-{{ asignacion.pk }}" 
+                                                onclick="event.stopPropagation();">
                                             <i class="fas fa-ban me-1"></i> Cancelar
                                         </button>
                                         {% else %}
@@ -159,7 +161,6 @@
                                     </td>
                                 </tr>
                                 
-                                <!-- Modal de Cancelación -->
                                 <div class="modal fade" id="cancelModal-{{ asignacion.pk }}" tabindex="-1" aria-hidden="true">
                                     <div class="modal-dialog modal-dialog-centered">
                                         <div class="modal-content border-0 shadow-lg">
@@ -200,6 +201,122 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="modal fade" id="checklistModal-{{ asignacion.pk }}" tabindex="-1" aria-hidden="true" 
+                                     data-unidad-pk="{{ asignacion.unidad.pk }}"> <div class="modal-dialog modal-dialog-centered modal-xl">
+                                        <div class="modal-content border-0 shadow-lg">
+                                            <div class="modal-header bg-warning text-dark">
+                                                <h5 class="modal-title">
+                                                    <i class="fas fa-tools me-2"></i> Fallas Reportadas: {{ asignacion.unidad.nombre }}
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body p-4">
+                                                
+                                                <div class="report-controls border rounded p-3 mb-4 bg-light" onclick="event.stopPropagation();">
+                                                    <h6 class="mb-3"><i class="fas fa-history me-2"></i>Historial de Correcciones</h6>
+                                                    <form class="report-filter-form row g-2 align-items-end mb-3">
+                                                        <div class="col-md-4">
+                                                            <label for="report_start_date-{{ asignacion.pk }}" class="form-label form-label-sm fw-bold">Desde:</label>
+                                                            <input type="date" id="report_start_date-{{ asignacion.pk }}" class="form-control form-control-sm report-date-filter" 
+                                                                   value="{% now 'Y-m-01' %}"> </div>
+                                                        <div class="col-md-4">
+                                                            <label for="report_end_date-{{ asignacion.pk }}" class="form-label form-label-sm fw-bold">Hasta:</label>
+                                                            <input type="date" id="report_end_date-{{ asignacion.pk }}" class="form-control form-control-sm report-date-filter"
+                                                                   value="{% now 'Y-m-d' %}"> </div>
+                                                        <div class="col-md-4 d-flex justify-content-end">
+                                                            <a href="#" class="btn btn-danger btn-sm me-2 report-pdf-link" 
+                                                               data-base-url="{% url 'unidad-reporte-correcciones-pdf' asignacion.unidad.pk %}"
+                                                               target="_blank"> <i class="fas fa-file-pdf me-1"></i> PDF
+                                                            </a>
+                                                            <a href="#" class="btn btn-success btn-sm report-excel-link"
+                                                               data-base-url="{% url 'unidad-reporte-correcciones-excel' asignacion.unidad.pk %}"
+                                                               target="_blank"> <i class="fas fa-file-excel me-1"></i> Excel
+                                                            </a>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                                {% if asignacion.bad_items_list %}
+                                                    <div class="alert alert-light" role="alert">
+                                                        Mostrando <strong>{{ asignacion.bad_items_list|length }}</strong> falla(s) del último checklist (Fecha: {{ asignacion.latest_checklist_date|date:"d M, Y H:i" }})
+                                                    </div>
+                                                    
+                                                    <div class="list-group list-group-flush">
+                                                        {% for item in asignacion.bad_items_list %}
+                                                        <div class="list-group-item p-3" onclick="event.stopPropagation();">
+                                                            <div class="row g-3 align-items-center">
+                                                                <div class="col-auto">
+                                                                    {% if item.foto and item.foto.url %}
+                                                                        <img src="{{ item.foto.url }}" 
+                                                                             class="img-thumbnail img-clickable" 
+                                                                             alt="Evidencia de {{ item.label }}"
+                                                                             data-bs-toggle="modal" 
+                                                                             data-bs-target="#image-viewer-modal"
+                                                                             data-full-src="{{ item.foto.url }}">
+                                                                    {% else %}
+                                                                        <div class="img-thumbnail-placeholder">
+                                                                            <i class="fas fa-camera-slash fa-2x text-muted"></i>
+                                                                        </div>
+                                                                    {% endif %}
+                                                                </div>
+                                                                
+                                                                <div class="col-md-4">
+                                                                    <strong class="d-block text-dark">{{ item.label }}</strong>
+                                                                    <small class="text-muted fst-italic">{{ item.obs|default:"Sin observación."|truncatechars:100 }}</small>
+                                                                </div>
+
+                                                                <div class="col-md-5">
+                                                                    <div class="form-floating">
+                                                                        <textarea class="form-control" placeholder="Comentario de Admin" 
+                                                                                  id="comentario-{{ item.id }}" 
+                                                                                  style="height: 100px"
+                                                                                  {% if item.esta_corregido %}readonly{% endif %}>{{ item.comentario_admin|default:"" }}</textarea>
+                                                                        <label for="comentario-{{ item.id }}">Comentario de Corrección (Admin)</label>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                <div class="col-md-2 text-center">
+                                                                    <div class="form-check form-switch mb-2">
+                                                                        <input class="form-check-input" type="checkbox" role="switch" id="corregido-{{ item.id }}"
+                                                                               {% if item.esta_corregido %}checked disabled{% endif %}>
+                                                                        <label class="form-check-label" for="corregido-{{ item.id }}">
+                                                                            {% if item.esta_corregido %}Corregido{% else %}Corregir{% endif %}
+                                                                        </label>
+                                                                    </div>
+                                                                    
+                                                                    <button class="btn btn-success btn-sm w-100 btn-guardar-correccion" 
+                                                                            data-item-pk="{{ item.id }}" 
+                                                                            data-url="{% url 'api-corregir-falla' item.id %}"
+                                                                            {% if item.esta_corregido %}disabled{% endif %}>
+                                                                        <i class="fas fa-save me-1"></i> Guardar
+                                                                    </button>
+                                                                    <small class="text-success d-none" id="feedback-{{ item.id }}">¡Guardado!</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% else %}
+                                                    <div class="text-center py-4">
+                                                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                                        <h5 class="text-muted">¡Sin Fallas!</h5>
+                                                        <p class="text-muted">
+                                                            {% if asignacion.latest_checklist_date %}
+                                                                No se encontraron ítems en 'MALO' en el último checklist (Fecha: {{ asignacion.latest_checklist_date|date:"d M, Y" }}).
+                                                            {% else %}
+                                                                No se ha registrado ningún checklist para esta unidad.
+                                                            {% endif %}
+                                                        </p>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {% empty %}
                                 <tr>
                                     <td colspan="3" class="text-center py-5">
@@ -220,72 +337,79 @@
     </div>
 </div>
 
-<style>
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
-    }
-    
-    .bg-gradient-info {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    }
-    
-    .card {
-        border-radius: 16px;
-        overflow: hidden;
-    }
-    
-    .card-header {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    
-    .table > :not(:first-child) {
-        border-top: 2px solid #e9ecef;
-    }
-    
-    .table-hover tbody tr:hover {
-        background-color: rgba(58, 123, 213, 0.05);
-    }
-    
-    .form-control, .form-select {
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-    }
-    
-    .input-group-text {
-        border-radius: 8px 0 0 8px;
-    }
-    
-    .input-group .form-control:not(:first-child) {
-        border-radius: 0 8px 8px 0;
-    }
-    
-    .modal-content {
-        border-radius: 16px;
-    }
-    
-    .btn {
-        transition: all 0.2s ease-in-out;
-    }
-    
-    .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    
-    .badge {
-        font-weight: 500;
-    }
-</style>
+<div class="modal fade" id="image-viewer-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Evidencia Fotográfica</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-0">
+                <img id="modal-image-content" src="" class="img-fluid w-100" alt="Evidencia en tamaño completo">
+            </div>
+        </div>
+    </div>
+</div>
 
+<style>
+    /* ... (Estilos CSS existentes sin cambios) ... */
+    .bg-gradient-primary { background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%); }
+    .bg-gradient-info { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .card { border-radius: 16px; overflow: hidden; }
+    .card-header { border-bottom: 1px solid rgba(255, 255, 255, 0.2); }
+    .table > :not(:first-child) { border-top: 2px solid #e9ecef; }
+    .table-hover tbody tr:hover { background-color: rgba(58, 123, 213, 0.05); }
+    .table-warning-custom { background-color: #fffbeb !important; }
+    .table-hover tbody tr.table-warning-custom:hover { background-color: #fff8e1 !important; }
+    .form-control, .form-select { border-radius: 8px; padding: 0.75rem 1rem; }
+    .input-group-text { border-radius: 8px 0 0 8px; }
+    .input-group .form-control:not(:first-child) { border-radius: 0 8px 8px 0; }
+    .modal-content { border-radius: 16px; }
+    .btn { transition: all 0.2s ease-in-out; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .badge { font-weight: 500; }
+    .img-thumbnail.img-clickable {
+        width: 80px; height: 80px; object-fit: cover;
+        cursor: pointer; transition: transform 0.2s;
+    }
+    .img-thumbnail.img-clickable:hover { transform: scale(1.1); }
+    .img-thumbnail-placeholder {
+        width: 80px; height: 80px;
+        display: flex; align-items: center; justify-content: center;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+    }
+    /* --- NUEVO ---: Estilos para controles de reporte en modal */
+    .report-controls .form-label-sm { font-size: 0.8rem; margin-bottom: 0.25rem; }
+    .report-controls .form-control-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+    .report-controls .btn-sm { padding: 0.25rem 0.75rem; font-size: 0.875rem; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-    // Validación básica de formulario
-    (function() {
+    // --- Función CSRF token (Existente) ---
+    function getCookie(name) { /* ... (código sin cambios) ... */ 
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // --- Validación Bootstrap (Existente) ---
+    (function() { /* ... (código sin cambios) ... */ 
         'use strict'
-        
-        // Obtener todos los formularios a los que queremos aplicar estilos de validación de Bootstrap personalizados
         var forms = document.querySelectorAll('.needs-validation')
-        
-        // Bucle sobre ellos y evitar el envío
         Array.prototype.slice.call(forms)
             .forEach(function(form) {
                 form.addEventListener('submit', function(event) {
@@ -293,10 +417,126 @@
                         event.preventDefault()
                         event.stopPropagation()
                     }
-                    
                     form.classList.add('was-validated')
                 }, false)
             })
-    })()
+    })();
+
+    // --- Visor de Imágenes (Existente) ---
+    document.addEventListener('click', function(e) { /* ... (código sin cambios) ... */ 
+        if (e.target && e.target.dataset.fullSrc) {
+            var modalImage = document.getElementById('modal-image-content');
+            if (modalImage) {
+                modalImage.src = e.target.dataset.fullSrc;
+            }
+        }
+    });
+
+    // --- Guardar Correcciones AJAX (Existente) ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const saveButtons = document.querySelectorAll('.btn-guardar-correccion');
+        saveButtons.forEach(button => {
+            button.addEventListener('click', function(e) { /* ... (código AJAX sin cambios) ... */ 
+                e.preventDefault();
+                e.stopPropagation(); 
+                
+                const pk = this.dataset.itemPk;
+                const url = this.dataset.url;
+                
+                const checkbox = document.getElementById(`corregido-${pk}`);
+                const textarea = document.getElementById(`comentario-${pk}`);
+                const feedback = document.getElementById(`feedback-${pk}`);
+                
+                const data = {
+                    esta_corregido: checkbox.checked,
+                    comentario_admin: textarea.value
+                };
+
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === 'ok') {
+                        feedback.classList.remove('d-none', 'text-danger');
+                        feedback.classList.add('text-success');
+                        feedback.innerText = '¡Guardado!';
+                        
+                        if (checkbox.checked) {
+                            checkbox.disabled = true;
+                            textarea.readOnly = true;
+                            button.innerHTML = '<i class="fas fa-check"></i> Guardado';
+                            // Mantener botón deshabilitado si se corrigió
+                        } else {
+                            // Si solo guarda comentario, reactivar
+                            button.disabled = false;
+                            button.innerHTML = '<i class="fas fa-save me-1"></i> Guardar';
+                        }
+                        
+                        setTimeout(() => { feedback.classList.add('d-none'); }, 2000);
+
+                    } else {
+                        feedback.classList.remove('d-none', 'text-success');
+                        feedback.classList.add('text-danger');
+                        feedback.innerText = result.message || 'Error';
+                        button.disabled = false; 
+                        button.innerHTML = '<i class="fas fa-save me-1"></i> Guardar';
+                    }
+                })
+                .catch(error => {
+                    feedback.classList.remove('d-none', 'text-success');
+                    feedback.classList.add('text-danger');
+                    feedback.innerText = 'Error de red.';
+                    button.disabled = false; 
+                    button.innerHTML = '<i class="fas fa-save me-1"></i> Guardar';
+                });
+            });
+        });
+
+        // ========= INICIO: LÓGICA PARA ACTUALIZAR ENLACES DE REPORTES =========
+        // Selecciona todos los modales de checklist
+        const checklistModals = document.querySelectorAll('[id^="checklistModal-"]');
+
+        checklistModals.forEach(modal => {
+            const startDateInput = modal.querySelector('.report-date-filter[id^="report_start_date-"]');
+            const endDateInput = modal.querySelector('.report-date-filter[id^="report_end_date-"]');
+            const pdfLink = modal.querySelector('.report-pdf-link');
+            const excelLink = modal.querySelector('.report-excel-link');
+
+            // Función para actualizar los href de los botones
+            const updateReportLinks = () => {
+                if (!startDateInput || !endDateInput || !pdfLink || !excelLink) return;
+
+                const start = startDateInput.value;
+                const end = endDateInput.value;
+                const pdfBaseUrl = pdfLink.dataset.baseUrl;
+                const excelBaseUrl = excelLink.dataset.baseUrl;
+
+                // Construye la query string con las fechas
+                const queryString = `?start_date=${start}&end_date=${end}`;
+
+                // Actualiza los href
+                pdfLink.href = pdfBaseUrl + queryString;
+                excelLink.href = excelBaseUrl + queryString;
+            };
+
+            // Llama a la función cuando cambia una fecha
+            if (startDateInput) startDateInput.addEventListener('change', updateReportLinks);
+            if (endDateInput) endDateInput.addEventListener('change', updateReportLinks);
+
+            // Llama a la función también cuando se muestra el modal para establecer los valores iniciales
+            modal.addEventListener('shown.bs.modal', updateReportLinks);
+        });
+        // ========= FIN: LÓGICA PARA ACTUALIZAR ENLACES DE REPORTES =========
+    });
+
 </script>
 {% endblock %}

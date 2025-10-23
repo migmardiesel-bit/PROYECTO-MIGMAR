@@ -25,7 +25,8 @@ from django.http import JsonResponse
 from .models import *
 from .forms import *
 from django.utils import timezone
-
+import openpyxl # <--- AÑADE ESTE IMPORT
+from openpyxl.styles import Font, Alignment # <--- AÑADE ESTE IMPORT
 # --- NUEVOS IMPORTS PARA PDF ---
 from django.http import HttpResponse
 from django.template.loader import render_to_string
@@ -2149,16 +2150,72 @@ class AsignacionRevisionView(AdminRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Obtiene la fecha del filtro o usa la de hoy
         fecha_filtro_str = self.request.GET.get('fecha', timezone.now().strftime('%Y-%m-%d'))
         fecha_filtro = datetime.strptime(fecha_filtro_str, '%Y-%m-%d').date()
 
-        # ========= INICIO DE LA CORRECCIÓN =========
-        context['asignaciones_del_dia'] = AsignacionRevision.objects.filter(
+        asignaciones_del_dia = AsignacionRevision.objects.filter(
             fecha_revision=fecha_filtro
-        ).select_related('unidad') # <-- Se eliminó 'tecnico_asignado'
-        # ========= FIN DE LA CORRECCIÓN =========
+        ).select_related('unidad')
         
+        CHECKLIST_FIELD_NAMES = [
+            'cristales', 'espejos', 'logos', 'num_economico', 'puertas', 'cofre', 'parrilla', 
+            'defensas', 'faros', 'plafoneria', 'stops', 'direccionales', 'tapiceria', 
+            'instrumentos', 'carroceria', 'piso', 'costados', 'escape', 'pintura', 
+            'franjas', 'loderas', 'extintor', 'senalamientos', 'estado_general', 
+            'motor', 'caja', 'diferenciales', 'suspension_delantera', 'suspension_trasera', 
+            'fugas_combustible', 'fugas_aceite', 'estado_llantas', 'presion_llantas', 
+            'purga_tanques', 'estado_balatas', 'amortiguadores_delanteros', 
+            'amortiguadores_traseros', 'rines_aluminio', 'mangueras_servicio', 
+            'tarjeta_llave', 'revision_fusibles', 'revision_luces', 'revision_cable_7vias', 
+            'revision_fuga_aire'
+        ]
+        
+        for asignacion in asignaciones_del_dia:
+            latest_checklist = ChecklistInspeccion.objects.filter(
+                unidad=asignacion.unidad
+            ).order_by('-fecha').first()
+            
+            bad_items_list = []
+            if latest_checklist:
+                # (La variable 'correcciones_map' que teníamos aquí se elimina)
+
+                for field_name in CHECKLIST_FIELD_NAMES:
+                    estado = getattr(latest_checklist, field_name)
+                    if estado == 'MALO':
+                        obs = getattr(latest_checklist, f"{field_name}_obs", "Sin observación.")
+                        foto_obj = getattr(latest_checklist, f"{field_name}_foto", None)
+                        label = latest_checklist._meta.get_field(field_name).verbose_name.title()
+                        
+                        # ========= INICIO DE LA CORRECCIÓN CLAVE =========
+                        # En lugar de solo buscar, usamos 'get_or_create'.
+                        # Si la corrección no existe, la crea en el momento.
+                        # Esto soluciona el error de ID Nulo.
+                        correccion_obj, created = ChecklistCorreccion.objects.get_or_create(
+                            inspeccion=latest_checklist,
+                            nombre_campo=field_name,
+                            defaults={
+                                'observacion_original': obs,
+                                'esta_corregido': False,
+                            }
+                        )
+                        # ========= FIN DE LA CORRECCIÓN CLAVE =========
+
+                        bad_items_list.append({
+                            'id': correccion_obj.id, # <-- Esto AHORA SÍ tendrá un valor
+                            'label': label,
+                            'obs': obs,
+                            'foto': foto_obj,
+                            'esta_corregido': correccion_obj.esta_corregido,
+                            'comentario_admin': correccion_obj.comentario_admin or ""
+                        })
+                
+                asignacion.latest_checklist_date = latest_checklist.fecha
+                asignacion.bad_items_list = bad_items_list
+            else:
+                asignacion.latest_checklist_date = None
+                asignacion.bad_items_list = []
+        
+        context['asignaciones_del_dia'] = asignaciones_del_dia
         context['fecha_filtro'] = fecha_filtro
         context['titulo'] = "Asignar Revisiones de Unidades"
         return context
@@ -2168,7 +2225,6 @@ class AsignacionRevisionView(AdminRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        # Muestra el error específico (ej. "ya existe una asignación para esta unidad en esta fecha")
         messages.error(self.request, f"No se pudo guardar la asignación. Errores: {form.errors.as_text()}")
         return redirect('asignar-revision')
 
@@ -2678,5 +2734,253 @@ def download_comprasuministro_excel(request):
         ws.column_dimensions[column].width = adjusted_width
 
     # 7. Guardar el archivo y devolver la respuesta
+    wb.save(response)
+    return response
+
+@login_required
+@require_POST # Esta vista solo acepta peticiones POST
+def api_corregir_falla_checklist(request, pk):
+    """
+    API interna para guardar una corrección de checklist desde el modal
+    usando AJAX.
+    """
+    if not (es_admin(request.user) or es_encargado(request.user)):
+        return JsonResponse({'status': 'error', 'message': 'No tienes permiso.'}, status=403)
+
+    try:
+        # 1. Encontrar el objeto de corrección
+        correccion = get_object_or_404(ChecklistCorreccion, pk=pk)
+        
+        # 2. Leer los datos enviados desde el JavaScript (en formato JSON)
+        data = json.loads(request.body)
+        esta_corregido = data.get('esta_corregido', False)
+        comentario_admin = data.get('comentario_admin', '')
+
+        # 3. Validar y actualizar el objeto
+        if esta_corregido and not correccion.esta_corregido:
+            # Si se está marcando como corregido AHORA
+            correccion.esta_corregido = True
+            correccion.comentario_admin = comentario_admin
+            correccion.corregido_por = request.user
+            correccion.fecha_correccion = timezone.now()
+            
+            # **LÓGICA CLAVE: Actualizar el ChecklistInspeccion original**
+            # (Copiada de tu vista 'corregir_checklist_mal_view')
+            inspeccion_original = correccion.inspeccion
+            setattr(inspeccion_original, correccion.nombre_campo, 'BIEN')
+            inspeccion_original.save() # Guarda el cambio en el checklist original
+
+        elif not esta_corregido:
+             # Si se desmarca (o solo se guarda comentario)
+             # Nota: Por seguridad, no permitimos "des-corregir" fácilmente,
+             # pero sí permitimos guardar solo el comentario.
+             correccion.comentario_admin = comentario_admin
+        
+        else:
+            # Si ya estaba corregido y solo se actualiza el comentario
+            correccion.comentario_admin = comentario_admin
+
+        correccion.save() # Guarda los cambios en el objeto ChecklistCorreccion
+
+        return JsonResponse({
+            'status': 'ok',
+            'message': 'Corrección guardada exitosamente.',
+            'fecha_correccion': correccion.fecha_correccion.strftime('%d/%m/%Y') if correccion.fecha_correccion else None,
+            'corregido_por': correccion.corregido_por.get_full_name() if correccion.corregido_por else None
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'status': 'error', 'message': 'Datos inválidos.'}, status=400)
+    except ChecklistCorreccion.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'El ítem no existe.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+@login_required
+def download_correcciones_report_pdf(request, pk):
+    if not es_admin(request.user):
+        raise PermissionDenied("No tiene permiso para ver este reporte.")
+    if HTML is None:
+        return HttpResponse("Error: La librería WeasyPrint no está instalada.", status=500)
+
+    unidad = get_object_or_404(Unidad, pk=pk)
+    today = timezone.localdate()
+    start_date_str = request.GET.get('start_date', (today.replace(day=1)).isoformat())
+    end_date_str = request.GET.get('end_date', today.isoformat())
+    
+    start_date = parse_date(start_date_str)
+    end_date = parse_date(end_date_str)
+
+    queryset = ChecklistCorreccion.objects.filter(
+        inspeccion__unidad=unidad,
+        esta_corregido=True,
+        fecha_correccion__date__range=[start_date, end_date]
+    ).select_related(
+        'inspeccion', 'corregido_por',
+        'inspeccion__tecnico' # <-- AÑADIDO: Para obtener el técnico que reportó
+    ).order_by('-fecha_correccion')
+
+    correcciones_procesadas = []
+    for item in queryset:
+        fecha_falla = item.inspeccion.fecha
+        fecha_correccion = item.fecha_correccion
+        dias_totales = "N/A"
+        if fecha_falla and fecha_correccion:
+            dias_totales = (fecha_correccion.date() - fecha_falla.date()).days
+        
+        try:
+            componente = item.inspeccion._meta.get_field(item.nombre_campo).verbose_name.title()
+        except Exception:
+            componente = item.nombre_campo.replace('_', ' ').title()
+        
+        foto_obj = getattr(item.inspeccion, f"{item.nombre_campo}_foto", None)
+        
+        # Obtenemos el técnico que reportó
+        tecnico_reporta = "N/A"
+        if item.inspeccion.tecnico:
+            tecnico_reporta = item.inspeccion.tecnico.get_full_name() or item.inspeccion.tecnico.username
+
+        correcciones_procesadas.append({
+            'componente': componente,
+            'tecnico_reporta': tecnico_reporta, # <-- AÑADIDO
+            'fecha_falla': fecha_falla,
+            'fecha_correccion': fecha_correccion,
+            'dias_totales': dias_totales,
+            'observacion_original': item.observacion_original,
+            'comentario_admin': item.comentario_admin,
+            'corregido_por': item.corregido_por.get_full_name() if item.corregido_por else "N/A",
+            'foto_url': request.build_absolute_uri(foto_obj.url) if foto_obj and foto_obj.url else None,
+        })
+
+    context = {
+        'unidad': unidad,
+        'start_date': start_date,
+        'end_date': end_date,
+        'correcciones_list': correcciones_procesadas,
+        'titulo': f"Reporte de Fallas Corregidas: {unidad.nombre}",
+        'today': today, # <-- AÑADIDO: Para el header del PDF
+    }
+
+    html_string = render_to_string('reporte_correcciones_pdf.html', context)
+    pdf_file = HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
+    response = HttpResponse(pdf_file, content_type='application/pdf')
+    filename = f"reporte_correcciones_{unidad.nombre.replace(' ', '_')}_{today.strftime('%Y%m%d')}.pdf"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+# =====================================================================
+# === VISTA DEL EXCEL DE CORRECCIONES (NUEVA) =========================
+# =====================================================================
+@login_required
+def download_correcciones_report_excel(request, pk):
+    if not es_admin(request.user):
+        raise PermissionDenied("No tiene permiso para exportar este reporte.")
+
+    unidad = get_object_or_404(Unidad, pk=pk)
+    today = timezone.localdate()
+    start_date_str = request.GET.get('start_date', (today.replace(day=1)).isoformat())
+    end_date_str = request.GET.get('end_date', today.isoformat())
+    
+    start_date = parse_date(start_date_str)
+    end_date = parse_date(end_date_str)
+
+    queryset = ChecklistCorreccion.objects.filter(
+        inspeccion__unidad=unidad,
+        esta_corregido=True,
+        fecha_correccion__date__range=[start_date, end_date]
+    ).select_related(
+        'inspeccion', 'corregido_por', 'inspeccion__tecnico'
+    ).order_by('-fecha_correccion')
+
+    # --- Inicio de la creación del Excel ---
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    filename = f"reporte_correcciones_{unidad.nombre.replace(' ', '_')}_{today.strftime('%Y%m%d')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Reporte de Correcciones"
+
+    # Estilos
+    bold_font = Font(bold=True)
+    center_align = Alignment(horizontal='center', vertical='center')
+
+    # Título
+    ws['A1'] = f"Reporte de Fallas Corregidas: {unidad.nombre}"
+    ws.merge_cells('A1:I1')
+    ws['A1'].font = Font(bold=True, size=16)
+    ws['A1'].alignment = center_align
+
+    ws['A2'] = f"Reporte generado el {today.strftime('%d/%m/%Y')}. Rango: {start_date.strftime('%d/%m/%Y')} al {end_date.strftime('%d/%m/%Y')}"
+    ws.merge_cells('A2:I2')
+    ws['A2'].alignment = center_align
+    ws.append([]) # Fila vacía
+
+    # Encabezados
+    headers = [
+        'Componente', 'Técnico (Reportó)', 'Fecha Falla', 'Comentario Falla',
+        'Fecha Corrección', 'Días en Reparar', 'Comentario Admin', 
+        'Corregido Por', 'URL Foto Evidencia'
+    ]
+    ws.append(headers)
+    for cell in ws[4]: # Fila 4 es la de headers
+        cell.font = bold_font
+
+    # Llenar datos
+    for item in queryset:
+        fecha_falla = item.inspeccion.fecha
+        fecha_correccion = item.fecha_correccion
+        dias_totales = "N/A"
+        if fecha_falla and fecha_correccion:
+            dias_totales = (fecha_correccion.date() - fecha_falla.date()).days
+        
+        try:
+            componente = item.inspeccion._meta.get_field(item.nombre_campo).verbose_name.title()
+        except Exception:
+            componente = item.nombre_campo.replace('_', ' ').title()
+        
+        foto_obj = getattr(item.inspeccion, f"{item.nombre_campo}_foto", None)
+        foto_url = request.build_absolute_uri(foto_obj.url) if foto_obj and foto_obj.url else "Sin Foto"
+
+        tecnico_reporta = "N/A"
+        if item.inspeccion.tecnico:
+            tecnico_reporta = item.inspeccion.tecnico.get_full_name() or item.inspeccion.tecnico.username
+
+        corregido_por = item.corregido_por.get_full_name() if item.corregido_por else "N/A"
+
+        # Añadir fila
+        ws.append([
+            componente,
+            tecnico_reporta,
+            fecha_falla.astimezone(timezone.get_current_timezone()) if fecha_falla else "N/A",
+            item.observacion_original or "-",
+            fecha_correccion.astimezone(timezone.get_current_timezone()) if fecha_correccion else "N/A",
+            dias_totales,
+            item.comentario_admin or "-",
+            corregido_por,
+            foto_url
+        ])
+        
+        # Formatear fechas
+        last_row = ws.max_row
+        if fecha_falla:
+            ws[f'C{last_row}'].number_format = 'DD/MM/YYYY HH:MM'
+        if fecha_correccion:
+            ws[f'E{last_row}'].number_format = 'DD/MM/YYYY HH:MM'
+
+    # Ajustar anchos de columna
+    ws.column_dimensions['A'].width = 30 # Componente
+    ws.column_dimensions['B'].width = 30 # Técnico
+    ws.column_dimensions['C'].width = 20 # Fecha Falla
+    ws.column_dimensions['D'].width = 40 # Comentario Falla
+    ws.column_dimensions['E'].width = 20 # Fecha Corrección
+    ws.column_dimensions['F'].width = 15 # Días
+    ws.column_dimensions['G'].width = 40 # Comentario Admin
+    ws.column_dimensions['H'].width = 30 # Corregido Por
+    ws.column_dimensions['I'].width = 50 # URL Foto
+
+    # Guardar
     wb.save(response)
     return response
