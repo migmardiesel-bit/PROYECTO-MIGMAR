@@ -220,10 +220,14 @@ class ChecklistInspeccion(models.Model):
 
     # --- INICIO DE LA LÓGICA DE GENERACIÓN DE ERRORES ---
     def save(self, *args, **kwargs):
-        # Primero se guarda el objeto para que tenga un PK y pueda usarse en la FK
+        """
+        Lógica de guardado modificada para implementar la de-duplicación de fallas
+        y la autoridad del administrador sobre el cierre de fallas.
+        """
+        # 1. Guardar el checklist como siempre (con los estados BIEN/MALO)
         super().save(*args, **kwargs)
 
-        # Lista de todos los campos que representan ítems del checklist
+        # 2. Lista de campos a revisar
         FIELD_NAMES = [
             'cristales', 'espejos', 'logos', 'num_economico', 'puertas', 'cofre', 'parrilla', 
             'defensas', 'faros', 'plafoneria', 'stops', 'direccionales', 'tapiceria', 
@@ -237,30 +241,51 @@ class ChecklistInspeccion(models.Model):
             'revision_fuga_aire'
         ]
 
-        # Iterar sobre cada campo de ítem
+        # 3. Iterar y aplicar la nueva lógica
         for campo in FIELD_NAMES:
-            estado_campo = getattr(self, campo) # Obtiene el valor (BIEN/MALO)
-            obs_campo = getattr(self, f'{campo}_obs', None) # Obtiene la observación
+            estado_campo = getattr(self, campo)
 
             if estado_campo == 'MALO':
-                # Crear o actualizar el registro de corrección si está en MALO
-                # Solo se crea un nuevo registro si no existe o si no está marcado como corregido.
-                ChecklistCorreccion.objects.get_or_create(
-                    inspeccion=self,
+                # El técnico marcó MALO.
+                
+                # REQUISITO 1 y 3: Verificar si ya existe una falla PENDIENTE
+                # (esta_corregido=False) para esta MISMA UNIDAD y este MISMO CAMPO.
+                existing_pending_fault = ChecklistCorreccion.objects.filter(
+                    inspeccion__unidad=self.unidad, # Busca en TODAS las inspecciones de esta UNIDAD
                     nombre_campo=campo,
-                    defaults={
-                        'observacion_original': obs_campo,
-                        'esta_corregido': False,
-                    }
-                )
+                    esta_corregido=False # Y que esté PENDIENTE
+                ).exists() # Solo necesitamos saber si existe (True/False)
+
+                if not existing_pending_fault:
+                    # No existe una falla pendiente para este ítem en esta unidad.
+                    # Por lo tanto, creamos una NUEVA falla.
+                    # Usamos get_or_create() para evitar duplicados si el técnico
+                    # guarda esta *misma* inspección varias veces.
+                    obs_campo = getattr(self, f'{campo}_obs', None)
+                    ChecklistCorreccion.objects.get_or_create(
+                        inspeccion=self, # Se asocia a ESTA inspección
+                        nombre_campo=campo,
+                        defaults={
+                            'observacion_original': obs_campo,
+                            'esta_corregido': False,
+                        }
+                    )
+                # else:
+                    # Ya existe una falla pendiente (existing_pending_fault = True).
+                    # NO creamos una nueva. No hacemos nada.
+                    # (Cumple Requisito 1: "no duplicarlo")
+                    pass
+
             elif estado_campo == 'BIEN':
-                # Si un ítem que era MALO se cambia a BIEN manualmente en la inspección original,
-                # se puede eliminar cualquier registro de corrección pendiente.
-                ChecklistCorreccion.objects.filter(
-                    inspeccion=self, 
-                    nombre_campo=campo, 
-                    esta_corregido=False
-                ).delete()
+                # El técnico marcó BIEN.
+                
+                # REQUISITO 2: "si esta como mala y el tecnico la pone como bien 
+                # que la falla aun queda registrada"
+                
+                # La lógica anterior (que eliminaba la falla) se remueve.
+                # Un técnico marcando "BIEN" no debe tener efecto sobre
+                # los registros de ChecklistCorreccion pendientes.
+                pass
 
 # --- INICIO DE CÓDIGO AÑADIDO ---
 # ===================================================================

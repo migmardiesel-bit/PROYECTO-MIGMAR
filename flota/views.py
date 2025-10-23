@@ -25,10 +25,12 @@ from django.http import JsonResponse
 from .models import *
 from .forms import *
 from django.utils import timezone
+from .models import Unidad, ChecklistCorreccion
 import openpyxl # <--- AÑADE ESTE IMPORT
 from openpyxl.styles import Font, Alignment # <--- AÑADE ESTE IMPORT
 # --- NUEVOS IMPORTS PARA PDF ---
 from django.http import HttpResponse
+import json
 from django.template.loader import render_to_string
 try:
     from weasyprint import HTML
@@ -2157,63 +2159,59 @@ class AsignacionRevisionView(AdminRequiredMixin, CreateView):
             fecha_revision=fecha_filtro
         ).select_related('unidad')
         
-        CHECKLIST_FIELD_NAMES = [
-            'cristales', 'espejos', 'logos', 'num_economico', 'puertas', 'cofre', 'parrilla', 
-            'defensas', 'faros', 'plafoneria', 'stops', 'direccionales', 'tapiceria', 
-            'instrumentos', 'carroceria', 'piso', 'costados', 'escape', 'pintura', 
-            'franjas', 'loderas', 'extintor', 'senalamientos', 'estado_general', 
-            'motor', 'caja', 'diferenciales', 'suspension_delantera', 'suspension_trasera', 
-            'fugas_combustible', 'fugas_aceite', 'estado_llantas', 'presion_llantas', 
-            'purga_tanques', 'estado_balatas', 'amortiguadores_delanteros', 
-            'amortiguadores_traseros', 'rines_aluminio', 'mangueras_servicio', 
-            'tarjeta_llave', 'revision_fusibles', 'revision_luces', 'revision_cable_7vias', 
-            'revision_fuga_aire'
-        ]
+        # --- INICIO DE LA LÓGICA CORREGIDA ---
         
         for asignacion in asignaciones_del_dia:
+            
+            # 1. Obtener TODAS las fallas PENDIENTES (reales) para esta unidad
+            fallas_pendientes = ChecklistCorreccion.objects.filter(
+                inspeccion__unidad=asignacion.unidad,
+                esta_corregido=False
+            ).select_related('inspeccion') # Incluimos la inspección que originó la falla
+
+            bad_items_list = []
+            
+            # 2. Iterar sobre las fallas pendientes encontradas
+            for correccion_obj in fallas_pendientes:
+                
+                # La información (obs, foto) debe venir de la inspección
+                # que *originó* la falla pendiente (guardada en correccion_obj.inspeccion)
+                inspeccion_origen = correccion_obj.inspeccion 
+                campo_nombre = correccion_obj.nombre_campo
+                
+                try:
+                    # Obtener los datos de la inspección original
+                    obs = getattr(inspeccion_origen, f"{campo_nombre}_obs", "Sin observación.")
+                    foto_obj = getattr(inspeccion_origen, f"{campo_nombre}_foto", None)
+                    label = inspeccion_origen._meta.get_field(campo_nombre).verbose_name.title()
+                except Exception:
+                    # Fallback por si el campo ya no existe
+                    obs = correccion_obj.observacion_original or "Sin observación."
+                    foto_obj = None
+                    label = campo_nombre.replace('_', ' ').title()
+
+                bad_items_list.append({
+                    'id': correccion_obj.id,
+                    'label': label,
+                    'obs': obs,
+                    'foto': foto_obj,
+                    'esta_corregido': correccion_obj.esta_corregido,
+                    'comentario_admin': correccion_obj.comentario_admin or ""
+                })
+
+            # 3. Guardar la lista de fallas y la fecha del último checklist
+            asignacion.bad_items_list = bad_items_list
+            
             latest_checklist = ChecklistInspeccion.objects.filter(
                 unidad=asignacion.unidad
             ).order_by('-fecha').first()
             
-            bad_items_list = []
             if latest_checklist:
-                # (La variable 'correcciones_map' que teníamos aquí se elimina)
-
-                for field_name in CHECKLIST_FIELD_NAMES:
-                    estado = getattr(latest_checklist, field_name)
-                    if estado == 'MALO':
-                        obs = getattr(latest_checklist, f"{field_name}_obs", "Sin observación.")
-                        foto_obj = getattr(latest_checklist, f"{field_name}_foto", None)
-                        label = latest_checklist._meta.get_field(field_name).verbose_name.title()
-                        
-                        # ========= INICIO DE LA CORRECCIÓN CLAVE =========
-                        # En lugar de solo buscar, usamos 'get_or_create'.
-                        # Si la corrección no existe, la crea en el momento.
-                        # Esto soluciona el error de ID Nulo.
-                        correccion_obj, created = ChecklistCorreccion.objects.get_or_create(
-                            inspeccion=latest_checklist,
-                            nombre_campo=field_name,
-                            defaults={
-                                'observacion_original': obs,
-                                'esta_corregido': False,
-                            }
-                        )
-                        # ========= FIN DE LA CORRECCIÓN CLAVE =========
-
-                        bad_items_list.append({
-                            'id': correccion_obj.id, # <-- Esto AHORA SÍ tendrá un valor
-                            'label': label,
-                            'obs': obs,
-                            'foto': foto_obj,
-                            'esta_corregido': correccion_obj.esta_corregido,
-                            'comentario_admin': correccion_obj.comentario_admin or ""
-                        })
-                
                 asignacion.latest_checklist_date = latest_checklist.fecha
-                asignacion.bad_items_list = bad_items_list
             else:
                 asignacion.latest_checklist_date = None
-                asignacion.bad_items_list = []
+        
+        # --- FIN DE LA LÓGICA CORREGIDA ---
         
         context['asignaciones_del_dia'] = asignaciones_del_dia
         context['fecha_filtro'] = fecha_filtro
@@ -2950,13 +2948,17 @@ def download_correcciones_report_excel(request, pk):
 
         corregido_por = item.corregido_por.get_full_name() if item.corregido_por else "N/A"
 
+        # CORRECCIÓN 2: Quitar la información de zona horaria (tzinfo)
+        fecha_falla_naive = timezone.localtime(fecha_falla).replace(tzinfo=None) if fecha_falla else "N/A"
+        fecha_correccion_naive = timezone.localtime(fecha_correccion).replace(tzinfo=None) if fecha_correccion else "N/A"
+
         # Añadir fila
         ws.append([
             componente,
             tecnico_reporta,
-            fecha_falla.astimezone(timezone.get_current_timezone()) if fecha_falla else "N/A",
+            fecha_falla_naive,
             item.observacion_original or "-",
-            fecha_correccion.astimezone(timezone.get_current_timezone()) if fecha_correccion else "N/A",
+            fecha_correccion_naive,
             dias_totales,
             item.comentario_admin or "-",
             corregido_por,
