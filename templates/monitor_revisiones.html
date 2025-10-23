@@ -25,9 +25,7 @@
                     <thead class="table-dark">
                         <tr>
                             <th class="ps-4">Unidad</th>
-                            <th>Técnico Asignado</th>
                             <th>Estado / Progreso</th>
-                            <th>Técnico Realizó</th>
                             <th>Tiempo Total</th>
                             <th class="text-center pe-4">Acciones</th>
                         </tr>
@@ -47,21 +45,9 @@
                                 </div>
                             </td>
                             
-                            <!-- Columna Técnico Asignado -->
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0 bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                        <i class="fas fa-user text-muted"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-2">
-                                        {{ item.asignacion.tecnico_asignado.get_full_name|default:item.asignacion.tecnico_asignado.username }}
-                                    </div>
-                                </div>
-                            </td>
-                            
                             <!-- Columna Estado/Progreso -->
                             <td>
-                                {% if item.asignacion.status != 'PENDIENTE' %}
+                                {% if item.asignacion.status != 'PENDIENTE' and item.asignacion.status != 'EN_PROCESO' and item.asignacion.status != 'TERMINADO' %}
                                     <div class="py-2">
                                         {% if item.asignacion.status == 'CANCELADO' %}
                                             <span class="badge bg-danger rounded-pill px-3 py-2 fs-6">
@@ -81,7 +67,21 @@
                                         {% endif %}
                                     </div>
                                 {% else %}
-                                    <div class="d-flex justify-content-between align-items-center px-2">
+                                    {% if item.asignacion.status == 'TERMINADO' %}
+                                        <span class="badge bg-success rounded-pill px-3 py-2 fs-6">
+                                            <i class="fas fa-check-circle me-1"></i> TERMINADO
+                                        </span>
+                                    {% elif item.asignacion.status == 'EN_PROCESO' %}
+                                        <span class="badge bg-info text-dark rounded-pill px-3 py-2 fs-6 mb-2">
+                                            <i class="fas fa-cogs fa-spin me-1"></i> EN PROCESO
+                                        </span>
+                                    {% elif item.asignacion.status == 'PENDIENTE' %}
+                                         <span class="badge bg-light text-dark border rounded-pill px-3 py-2 fs-6 mb-2">
+                                            <i class="fas fa-clock me-1"></i> PENDIENTE
+                                        </span>
+                                    {% endif %}
+                                
+                                    <div class="d-flex justify-content-between align-items-center px-2 mt-2">
                                         <div class="text-center">
                                             <div class="mb-1 {% if item.checklist_ok %}text-success{% else %}text-muted{% endif %}">
                                                 <i class="fas {% if item.checklist_ok %}fa-check-circle{% else %}fa-times-circle{% endif %} fa-lg"></i>
@@ -105,7 +105,7 @@
                                                 {% if item.urea_ok %}
                                                     <i class="fas fa-check-circle text-success fa-lg"></i>
                                                 {% else %}
-                                                    <i class="fas fa-circle-notch fa-spin text-muted" title="Opcional"></i>
+                                                    <i class="fas {% if item.asignacion.status == 'EN_PROCESO' %}fa-circle-notch fa-spin{% else %}fa-times-circle{% endif %} text-muted" title="Opcional/Pendiente"></i>
                                                 {% endif %}
                                             </div>
                                             <small class="text-muted">Urea</small>
@@ -114,22 +114,6 @@
                                 {% endif %}
                             </td>
 
-                            <!-- Columna Técnico Realizó -->
-                            <td>
-                                {% if item.tecnico_realizo %}
-                                    <div class="d-flex align-items-center">
-                                        <div class="flex-shrink-0 bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                            <i class="fas fa-user-check"></i>
-                                        </div>
-                                        <div class="flex-grow-1 ms-2">
-                                            {{ item.tecnico_realizo.get_full_name|default_if_none:"-" }}
-                                        </div>
-                                    </div>
-                                {% else %}
-                                    <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            
                             <!-- Columna Tiempo Total -->
                             <td>
                                 {% if item.tiempo_total %}
@@ -197,7 +181,7 @@
 
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center py-5">
+                            <td colspan="4" class="text-center py-5">
                                 <div class="py-4">
                                     <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
                                     <h5 class="text-muted">No hay revisiones programadas para esta fecha</h5>

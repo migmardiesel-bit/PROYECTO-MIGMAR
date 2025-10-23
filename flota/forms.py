@@ -10,7 +10,7 @@ from django.db.models import Sum
 from django.forms import BaseFormSet
 from django.db.models import Sum, Q  # <--- MODIFICA ESTA LÍNEA (AÑADE LA Q)
 from django.contrib.auth.models import User, Group # <-- Añadir Group
-
+from .models import ChecklistCorreccion # <-- Asegúrate de importar tu nuevo modelo
 class UnidadForm(forms.ModelForm):
     class Meta:
         model = Unidad
@@ -303,20 +303,37 @@ class AjusteInventarioForm(forms.ModelForm):
         
 class AsignacionRevisionForm(forms.ModelForm):
     
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Filtra para mostrar solo usuarios en los grupos 'Tecnico' o 'Encargado'
-        tecnicos_group = Group.objects.get(name='Tecnico')
-        encargados_group = Group.objects.get(name='Encargado')
-        self.fields['tecnico_asignado'].queryset = User.objects.filter(
-            Q(groups=tecnicos_group) | Q(groups=encargados_group)
-        ).distinct()
+    # *** ELIMINAR EL MÉTODO __init__ COMPLETO ***
+    # (Ya que solo se usaba para filtrar tecnicos_asignado)
 
     class Meta:
         model = AsignacionRevision
-        fields = ['unidad', 'tecnico_asignado', 'fecha_revision']
+        # *** CAMBIO: REMOVER 'tecnico_asignado' DE fields ***
+        fields = ['unidad', 'fecha_revision', 'comentario_cancelacion'] 
         widgets = {
             'unidad': forms.Select(attrs={'class': 'form-select'}),
-            'tecnico_asignado': forms.Select(attrs={'class': 'form-select'}),
             'fecha_revision': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            # ELIMINAR WIDGET DE tecnico_asignado
+            'comentario_cancelacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+        
+class ChecklistCorreccionForm(forms.ModelForm):
+    """
+    Formulario para que el administrador palomee y comente un ítem MALO.
+    """
+    # Usamos un campo oculto para el ID del registro de corrección
+    id = forms.IntegerField(widget=forms.HiddenInput())
+    
+    esta_corregido = forms.BooleanField(
+        required=False,
+        label="Corregido (Marcar para cambiar a BIEN)",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    class Meta:
+        model = ChecklistCorreccion
+        # Solo necesitamos los campos de corrección del administrador
+        fields = ['id', 'esta_corregido', 'comentario_admin'] 
+        widgets = {
+            'comentario_admin': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Comentario de la corrección/revisión'}),
         }

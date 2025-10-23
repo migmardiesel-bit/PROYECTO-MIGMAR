@@ -14,8 +14,7 @@ from django.views.generic.edit import FormView
 from django.db import transaction
 from django.contrib import messages
 from django.views.decorators.http import require_POST # <-- AÑADIR ESTE IMPORT
-from django.forms import formset_factory, inlineformset_factory
-from django.utils.dateparse import parse_date
+from django.forms import formset_factory, inlineformset_factory, modelformset_factory
 import openpyxl
 from openpyxl.styles import Font, Alignment
 from openpyxl.worksheet.table import Table, TableStyleInfo # <-- AÑADIR ESTA LÍNEA
@@ -37,12 +36,13 @@ except ImportError:
 from django.http import JsonResponse
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin # Asegúrate que UserPassesTestMixin esté importado
 from .alerts import send_on_demand_status_report # <-- NUEVO IMPORT
-
+from .models import AsignacionRevision # <-- Y todos los demás modelos que uses
 # === IMPORTS ADICIONALES PARA CARGA MANUAL A S3 ===
 import boto3
 from botocore.exceptions import BotoCoreError, NoCredentialsError
 from django.conf import settings
 import os
+from .utils import recalcular_costos_cargas_diesel, recalcular_costos_cargas_urea
 # ===================================================
 
 
@@ -1375,10 +1375,25 @@ class ProcesoLlantasView(IniciaProcesoRequiredMixin, TemplateView):
                     if form_data and form_data.get('mm'):
                         LlantaDetalle.objects.create(inspeccion=llantas_inspeccion_obj, **form_data)
                 
-                ProcesoCarga.objects.create(
+                # Aquí se crea el ProcesoCarga
+                proceso_carga_obj = ProcesoCarga.objects.create(
                     unidad=unidad, checklist=checklist_obj, inspeccion_llantas=llantas_inspeccion_obj, 
                     tecnico_inicia=request.user, status='PENDIENTE'
                 )
+                
+                # ========= INICIO DE LÓGICA AÑADIDA (EN_PROCESO) =========
+                try:
+                    asignacion_del_dia = AsignacionRevision.objects.get(
+                        unidad=proceso_carga_obj.unidad,
+                        # USA LA HORA LOCAL PARA OBTENER LA FECHA
+                        fecha_revision=timezone.localdate(proceso_carga_obj.fecha_inicio),
+                        status='PENDIENTE' 
+                    )
+                    asignacion_del_dia.status = 'EN_PROCESO'
+                    asignacion_del_dia.save()
+                except AsignacionRevision.DoesNotExist:
+                    pass 
+                # ========= FIN DE LA LÓGICA AÑADIDA =========
                 
                 if km_llantas > unidad.km_actual:
                     unidad.km_actual = km_llantas
@@ -1504,8 +1519,7 @@ class EncargadoProcesoUreaView(EncargadoRequiredMixin, FormView):
         if form.is_valid():
             return self.form_valid(form)
         else:
-            # --- INICIO DE LÓGICA MEJORADA ---
-            # Imprimir los errores en la consola (como antes, por si acaso)
+            # Imprimir los errores en la consola
             print("=====================================================")
             print("==> ERROR: EL FORMULARIO DE UREA ES INVÁLIDO <==")
             print(form.errors.as_json())
@@ -1514,14 +1528,11 @@ class EncargadoProcesoUreaView(EncargadoRequiredMixin, FormView):
             # Construir un mensaje de error detallado para mostrar en la pantalla
             error_message = "El formulario contiene errores. "
             for field, errors in form.errors.items():
-                # Limpia el nombre del campo (ej. 'litros_cargados' -> 'Litros cargados')
                 clean_field = field.replace('_', ' ').capitalize()
                 error_list = '; '.join(errors)
                 error_message += f"Campo '{clean_field}': {error_list}. "
             
-            # Usar el sistema de mensajes de Django para que el error aparezca en la plantilla
             messages.error(request, error_message)
-            # --- FIN DE LÓGICA MEJORADA ---
             
             return self.form_invalid(form)
 
@@ -1544,6 +1555,9 @@ class EncargadoProcesoUreaView(EncargadoRequiredMixin, FormView):
                     return self.form_invalid(form)
 
         try:
+            # Esta variable nos dirá si necesitamos recalcular urea
+            se_agrego_urea = False
+
             with transaction.atomic():
                 operador_id = diesel_data.pop('operador_id', None)
                 if not operador_id:
@@ -1551,7 +1565,7 @@ class EncargadoProcesoUreaView(EncargadoRequiredMixin, FormView):
                 
                 operador = get_object_or_404(Operador, pk=operador_id)
                 
-                # Crear la carga de diésel
+                # Crear la carga de diésel (ya no dispara el recálculo)
                 carga_diesel_obj = CargaDiesel.objects.create(unidad=proceso.unidad, operador=operador, **diesel_data)
                 
                 carga_urea_obj = None
@@ -1561,17 +1575,47 @@ class EncargadoProcesoUreaView(EncargadoRequiredMixin, FormView):
                 if litros_urea_cargados and litros_urea_cargados > 0:
                     urea_obj = form.save(commit=False)
                     urea_obj.unidad = proceso.unidad
-                    urea_obj.save() # El método save del modelo se encarga de calcular el costo
+                    urea_obj.save() # (ya no dispara el recálculo)
                     carga_urea_obj = urea_obj
+                    se_agrego_urea = True # Marcamos para recalcular después
 
                 # Actualizar y finalizar el proceso principal
                 proceso.carga_diesel = carga_diesel_obj
                 proceso.carga_urea = carga_urea_obj
                 proceso.encargado_finaliza = self.request.user
-                proceso.fecha_fin = datetime.now()
+                
+                # ========= CORRECCIÓN DE WARNING =========
+                proceso.fecha_fin = timezone.now() # Usar timezone.now() en lugar de datetime.now()
+                # ========= FIN CORRECIÓN =========
+                
                 proceso.status = 'COMPLETADO'
                 proceso.save()
+                
+                # Lógica para actualizar la AsignacionRevision
+                try:
+                    asignacion_del_dia = AsignacionRevision.objects.get(
+                        unidad=proceso.unidad,
+                        # USA LA HORA LOCAL PARA OBTENER LA FECHA
+                        fecha_revision=timezone.localdate(proceso.fecha_inicio),
+                        status__in=['PENDIENTE', 'EN_PROCESO'] 
+                    )
+                    asignacion_del_dia.status = 'TERMINADO'
+                    asignacion_del_dia.save()
+                except AsignacionRevision.DoesNotExist:
+                    pass 
+
+            # ========= FIN DE LA TRANSACCIÓN ATÓMICA =========
+            # En este punto, la base de datos ya NO está bloqueada.
+
+            # ========= INICIO DE LA MODIFICACIÓN CLAVE =========
+            # Ahora, ejecutamos las funciones de recálculo:
             
+            recalcular_costos_cargas_diesel() 
+            
+            if se_agrego_urea:
+                recalcular_costos_cargas_urea()
+            # ========= FIN DE LA MODIFICACIÓN CLAVE =========
+
             # Limpiar la sesión al finalizar exitosamente
             if diesel_data_key in self.request.session:
                 del self.request.session[diesel_data_key]
@@ -2100,9 +2144,11 @@ class AsignacionRevisionView(AdminRequiredMixin, CreateView):
         fecha_filtro_str = self.request.GET.get('fecha', timezone.now().strftime('%Y-%m-%d'))
         fecha_filtro = datetime.strptime(fecha_filtro_str, '%Y-%m-%d').date()
 
+        # ========= INICIO DE LA CORRECCIÓN =========
         context['asignaciones_del_dia'] = AsignacionRevision.objects.filter(
             fecha_revision=fecha_filtro
-        ).select_related('unidad', 'tecnico_asignado')
+        ).select_related('unidad') # <-- Se eliminó 'tecnico_asignado'
+        # ========= FIN DE LA CORRECCIÓN =========
         
         context['fecha_filtro'] = fecha_filtro
         context['titulo'] = "Asignar Revisiones de Unidades"
@@ -2117,54 +2163,6 @@ class AsignacionRevisionView(AdminRequiredMixin, CreateView):
         messages.error(self.request, f"No se pudo guardar la asignación. Errores: {form.errors.as_text()}")
         return redirect('asignar-revision')
 
-
-class MonitorRevisionesView(AdminRequiredMixin, TemplateView):
-    template_name = 'monitor_revisiones.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        
-        fecha_filtro_str = self.request.GET.get('fecha', timezone.now().strftime('%Y-%m-%d'))
-        fecha_filtro = datetime.strptime(fecha_filtro_str, '%Y-%m-%d').date()
-
-        asignaciones = AsignacionRevision.objects.filter(
-            fecha_revision=fecha_filtro
-        ).select_related('unidad', 'tecnico_asignado')
-
-        monitor_data = []
-        for asignacion in asignaciones:
-            proceso = asignacion.proceso_del_dia
-            data = {
-                'asignacion': asignacion,
-                'proceso_encontrado': False,
-                'tiempo_total': None,
-                'tecnico_realizo': None,
-                'checklist_ok': False, 'llantas_ok': False, 
-                'diesel_ok': False, 'urea_ok': False
-            }
-            if proceso:
-                data.update({
-                    'proceso_encontrado': True,
-                    'tecnico_realizo': proceso.tecnico_inicia,
-                    'checklist_ok': proceso.checklist is not None,
-                    'llantas_ok': proceso.inspeccion_llantas is not None,
-                    'diesel_ok': proceso.carga_diesel is not None,
-                    'urea_ok': proceso.carga_urea is not None,
-                })
-                if proceso.fecha_fin:
-                    delta = proceso.fecha_fin - proceso.fecha_inicio
-                    total_seconds = int(delta.total_seconds())
-                    hours, remainder = divmod(total_seconds, 3600)
-                    minutes, seconds = divmod(remainder, 60)
-                    data['tiempo_total'] = f'{hours:02}:{minutes:02}:{seconds:02}'
-
-            monitor_data.append(data)
-            
-        context['monitor_data'] = monitor_data
-        context['fecha_filtro'] = fecha_filtro
-        context['titulo'] = f"Monitor de Revisiones - {fecha_filtro.strftime('%d de %B, %Y')}"
-        return context
-    
 @require_POST # Asegura que esta vista solo acepte peticiones POST
 @login_required
 def cancelar_revision(request, pk):
@@ -2386,3 +2384,190 @@ def download_unidades_excel(request):
     # 8. Guardar y devolver
     wb.save(response)
     return response
+
+
+@login_required
+# @AdminRequiredMixin # Usar si aplica
+def corregir_checklist_mal_view(request):
+    
+    # 1. Definir el FormSet basado en el formulario de corrección
+    ChecklistCorreccionFormSet = modelformset_factory(
+        ChecklistCorreccion,
+        form=ChecklistCorreccionForm,
+        extra=0, # No se pueden añadir nuevos registros
+        can_delete=False
+    )
+    
+    # 2. Obtener los ítems MALO pendientes de corregir
+    # Filtra: esta_corregido=False.
+    # Usamos select_related para obtener los datos de la inspección y unidad en una consulta.
+    queryset = ChecklistCorreccion.objects.filter(
+        esta_corregido=False
+    ).select_related(
+        'inspeccion', 
+        'inspeccion__unidad'
+    ).order_by(
+        'inspeccion__fecha', # Segregado por fecha de inspección
+        'inspeccion__unidad__nombre'
+    )
+    
+    
+    if request.method == 'POST':
+        formset = ChecklistCorreccionFormSet(request.POST, queryset=queryset)
+        
+        if formset.is_valid():
+            with transaction.atomic():
+                correcciones_count = 0
+                correcciones_pendientes_a_comentar = 0
+                
+                for form in formset:
+                    if form.has_changed():
+                        instance = form.save(commit=False)
+                        
+                        # A) Lógica de corrección total (marcado y cambio de estado)
+                        if instance.esta_corregido and 'esta_corregido' in form.changed_data: 
+                            # Asigna datos de corrección
+                            instance.corregido_por = request.user 
+                            instance.fecha_correccion = timezone.now()
+                            instance.save() 
+                            correcciones_count += 1
+                            
+                            # **LOGICA CLAVE: ACTUALIZAR ChecklistInspeccion a BIEN**
+                            # Usamos el nombre_campo para actualizar dinámicamente el campo de la inspección.
+                            inspeccion_original = instance.inspeccion
+                            
+                            # 1. Actualiza el campo de estado a 'BIEN'
+                            setattr(inspeccion_original, instance.nombre_campo, 'BIEN')
+                            
+                            # 2. Opcional: Borra la foto y observación original (ya corregido)
+                            # setattr(inspeccion_original, f'{instance.nombre_campo}_obs', '')
+                            # setattr(inspeccion_original, f'{instance.nombre_campo}_foto', None)
+
+                            # 3. Guarda la inspección (el .save() *no* regenerará el error porque ya es 'BIEN')
+                            inspeccion_original.save() 
+
+                        # B) Lógica para guardar solo el comentario, si no se marcó como corregido
+                        elif 'comentario_admin' in form.changed_data:
+                            instance.save()
+                            correcciones_pendientes_a_comentar += 1
+
+
+                messages.success(request, f"Se han procesado {correcciones_count} correcciones. Los ítems corregidos han cambiado su estado a BIEN en la inspección original.")
+                
+                # Una vez guardado, redirigir a la misma página para ver la lista actualizada
+                return redirect('corregir-checklist-mal')
+        else:
+            messages.error(request, "Error en el formulario. Por favor, revisa los datos.")
+    else:
+        formset = ChecklistCorreccionFormSet(queryset=queryset)
+
+    # 3. Lógica de Agrupación por Fecha para el Template
+    items_agrupados = {}
+    form_map = {form.instance.id: form for form in formset} # Mapear ID -> Formulario
+    
+    for detalle in queryset:
+        # Usamos .date() para agrupar por el día, ignorando la hora
+        fecha_inspeccion = detalle.inspeccion.fecha.date() 
+        if fecha_inspeccion not in items_agrupados:
+            items_agrupados[fecha_inspeccion] = []
+        
+        # Asignar el formulario y la etiqueta legible al objeto detalle
+        detalle.form = form_map.get(detalle.id)
+        # La etiqueta legible se puede obtener del verbose_name del campo original
+        # Si no existe (porque no usamos el modelo original), usamos el nombre_campo
+        detalle.etiqueta_legible = detalle.inspeccion._meta.get_field(detalle.nombre_campo).verbose_name or detalle.nombre_campo.replace('_', ' ').title()
+        
+        items_agrupados[fecha_inspeccion].append(detalle)
+
+    data_for_template = [
+        {'fecha': fecha, 'detalles': detalles} 
+        for fecha, detalles in items_agrupados.items()
+    ]
+    
+    context = {
+        'titulo': 'Panel de Corrección de Checklist (MALO)',
+        'items_agrupados': data_for_template,
+        'formset': formset,
+    }
+    
+    return render(request, 'flota/corregir_checklist_mal.html', context)
+
+class MonitorRevisionesView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    # La lógica de carga de datos se maneja en get_context_data
+    template_name = 'monitor_revisiones.html'
+    context_object_name = 'revision_items'
+    
+    # 1. Función de prueba para asegurar que solo usuarios con permiso puedan acceder
+    def test_func(self):
+        # Asumo que el grupo de 'Administradores' o ser 'staff' es el requisito
+        return self.request.user.groups.filter(name='Administradores').exists() or self.request.user.is_staff
+
+    # 2. Obtener y mapear los datos
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Obtener la fecha de filtro de la URL o usar la fecha local actual
+        fecha_str = self.request.GET.get('fecha')
+        fecha_filtro = parse_date(fecha_str) if fecha_str else timezone.localdate()
+
+        context['fecha_filtro'] = fecha_filtro
+        context['titulo'] = f'Monitor de Revisiones Programadas - {fecha_filtro.strftime("%d/%m/%Y")}'
+        
+        # 1. Obtener las ASIGNACIONES (el plan) para esa fecha
+        asignaciones = AsignacionRevision.objects.filter(
+            fecha_revision=fecha_filtro
+        ).select_related(
+            'unidad'
+        ).order_by(
+            'unidad__nombre'
+        )
+
+        # 2. Obtener los PROCESOS (la ejecución) de ese día
+        # (Este es el paso que faltaba y estaba incorrecto)
+        procesos_del_dia = ProcesoCarga.objects.filter(
+            fecha_inicio__date=fecha_filtro
+        ).select_related(
+            'tecnico_inicia',
+            'checklist',
+            'inspeccion_llantas',
+            'carga_diesel',
+            'carga_urea'
+        )
+        
+        # 3. Mapear los procesos a sus unidades para un acceso rápido
+        mapa_procesos = {p.unidad_id: p for p in procesos_del_dia}
+
+        # 4. Combinar la data para el template
+        revision_items = []
+        for asignacion in asignaciones:
+            # Usamos el mapa para encontrar el proceso ejecutado (si existe)
+            proceso = mapa_procesos.get(asignacion.unidad_id)
+            
+            tiempo_total = None
+            if proceso and proceso.status == 'COMPLETADO' and proceso.fecha_fin:
+                delta = proceso.fecha_fin - proceso.fecha_inicio
+                # Formatea el tiempo (ej: "0:35:10")
+                tiempo_total = str(timedelta(seconds=int(delta.total_seconds())))
+
+            # Pasa los datos de progreso al template
+            revision_items.append({
+                'asignacion': asignacion, # El objeto AsignacionRevision
+                'proceso': proceso,       # El objeto ProcesoCarga (o None)
+                'tiempo_total': tiempo_total,
+                # Banderas para los íconos
+                'checklist_ok': bool(proceso and proceso.checklist),
+                'llantas_ok': bool(proceso and proceso.inspeccion_llantas),
+                'diesel_ok': bool(proceso and proceso.carga_diesel),
+                'urea_ok': bool(proceso and (proceso.carga_urea or proceso.status == 'COMPLETADO')),
+            })
+            
+        # El template itera sobre 'monitor_data'
+        context['monitor_data'] = revision_items
+        return context
+
+    # 4. Método requerido por ListView
+    def get_queryset(self):
+        # Este método solo sirve como base para ListView. La lógica clave está en get_context_data.
+        fecha_str = self.request.GET.get('fecha')
+        fecha_filtro = parse_date(fecha_str) if fecha_str else timezone.localdate()
+        return AsignacionRevision.objects.filter(fecha_revision=fecha_filtro).order_by('unidad__nombre')

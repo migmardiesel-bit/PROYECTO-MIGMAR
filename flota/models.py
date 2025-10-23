@@ -1,11 +1,10 @@
-# flota/models.py
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 from decimal import Decimal
-
+from django.utils import timezone
+from django.db import transaction
 
 # ===================================================================
 # 1. MODELOS PRINCIPALES (SIN DEPENDENCIAS)
@@ -63,15 +62,15 @@ class CargaDiesel(models.Model):
     def save(self, *args, **kwargs):
         """
         Versión simplificada. Ya no calcula el costo aquí.
-        Simplemente guarda el registro de la carga y luego dispara
-        la recalculación global de costos para todo el historial.
+        Simplemente guarda el registro de la carga.
+        La recalculación se llama desde la VISTA.
         """
         # Se elimina toda la lógica de cálculo de costo que estaba aquí.
         super().save(*args, **kwargs)
         
-        # Importamos la función aquí para evitar errores de importación circular.
-        from .utils import recalcular_costos_cargas_diesel
-        recalcular_costos_cargas_diesel()
+        # ========= INICIO DE LA MODIFICACIÓN =========
+        # ¡LAS LÍNEAS DE RECALCULACIÓN SE ELIMINARON DE AQUÍ!
+        # ========= FIN DE LA MODIFICACIÓN =========
 
     def get_absolute_url(self):
         return reverse('cargadiesel-list')
@@ -98,13 +97,13 @@ class CargaUrea(models.Model):
     def save(self, *args, **kwargs):
         """
         Versión simplificada. Ya no calcula el costo aquí.
-        Simplemente guarda el registro y dispara la recalculación global de costos.
+        Simplemente guarda el registro y la recalculación se dispara desde la VISTA.
         """
         super().save(*args, **kwargs)
         
-        # Importamos la función aquí para evitar errores de importación circular.
-        from .utils import recalcular_costos_cargas_urea
-        recalcular_costos_cargas_urea()
+        # ========= INICIO DE LA MODIFICACIÓN =========
+        # ¡LAS LÍNEAS DE RECALCULACIÓN SE ELIMINARON DE AQUÍ!
+        # ========= FIN DE LA MODIFICACIÓN =========
 
 
     
@@ -145,14 +144,17 @@ class CompraSuministro(models.Model):
 
         super().save(*args, **kwargs)
 
-        # Dispara la recalculación según el tipo de suministro.
-        if self.tipo_suministro == 'DIESEL':
-            from .utils import recalcular_costos_cargas_diesel
-            recalcular_costos_cargas_diesel()
-        elif self.tipo_suministro == 'UREA':
-            from .utils import recalcular_costos_cargas_urea
-            recalcular_costos_cargas_urea()
-    # --- FIN DE LA MODIFICACIÓN ---
+        # ========= INICIO DE LA MODIFICACIÓN =========
+        # Solo dispara la recalculación si NO estamos 
+        # dentro de una transacción atómica.
+        if not transaction.get_connection().in_atomic_block:
+            if self.tipo_suministro == 'DIESEL':
+                from .utils import recalcular_costos_cargas_diesel
+                recalcular_costos_cargas_diesel()
+            elif self.tipo_suministro == 'UREA':
+                from .utils import recalcular_costos_cargas_urea
+                recalcular_costos_cargas_urea()
+        # ========= FIN DE LA MODIFICACIÓN =========
 
     def get_absolute_url(self):
         return reverse('comprasuministro-list')
@@ -213,11 +215,52 @@ class ChecklistInspeccion(models.Model):
     revision_cable_7vias = models.CharField(max_length=4, choices=ESTADO_CHOICES, verbose_name="Revisión Cable 7 Vías"); revision_cable_7vias_obs = models.TextField(blank=True); revision_cable_7vias_foto = models.ImageField(upload_to='checklist_evidencia/', blank=True, null=True, verbose_name="Foto Revisión Cable 7 Vías")
     revision_fuga_aire = models.CharField(max_length=4, choices=ESTADO_CHOICES, verbose_name="Revisión Fuga de Aire"); revision_fuga_aire_obs = models.TextField(blank=True); revision_fuga_aire_foto = models.ImageField(upload_to='checklist_evidencia/', blank=True, null=True, verbose_name="Foto Revisión Fuga de Aire")
 
-    # Observaciones finales
-    observaciones_generales = models.TextField(blank=True)
-
     def __str__(self):
         return f"Checklist para {self.unidad} el {self.fecha.strftime('%Y-%m-%d')}"
+
+    # --- INICIO DE LA LÓGICA DE GENERACIÓN DE ERRORES ---
+    def save(self, *args, **kwargs):
+        # Primero se guarda el objeto para que tenga un PK y pueda usarse en la FK
+        super().save(*args, **kwargs)
+
+        # Lista de todos los campos que representan ítems del checklist
+        FIELD_NAMES = [
+            'cristales', 'espejos', 'logos', 'num_economico', 'puertas', 'cofre', 'parrilla', 
+            'defensas', 'faros', 'plafoneria', 'stops', 'direccionales', 'tapiceria', 
+            'instrumentos', 'carroceria', 'piso', 'costados', 'escape', 'pintura', 
+            'franjas', 'loderas', 'extintor', 'senalamientos', 'estado_general', 
+            'motor', 'caja', 'diferenciales', 'suspension_delantera', 'suspension_trasera', 
+            'fugas_combustible', 'fugas_aceite', 'estado_llantas', 'presion_llantas', 
+            'purga_tanques', 'estado_balatas', 'amortiguadores_delanteros', 
+            'amortiguadores_traseros', 'rines_aluminio', 'mangueras_servicio', 
+            'tarjeta_llave', 'revision_fusibles', 'revision_luces', 'revision_cable_7vias', 
+            'revision_fuga_aire'
+        ]
+
+        # Iterar sobre cada campo de ítem
+        for campo in FIELD_NAMES:
+            estado_campo = getattr(self, campo) # Obtiene el valor (BIEN/MALO)
+            obs_campo = getattr(self, f'{campo}_obs', None) # Obtiene la observación
+
+            if estado_campo == 'MALO':
+                # Crear o actualizar el registro de corrección si está en MALO
+                # Solo se crea un nuevo registro si no existe o si no está marcado como corregido.
+                ChecklistCorreccion.objects.get_or_create(
+                    inspeccion=self,
+                    nombre_campo=campo,
+                    defaults={
+                        'observacion_original': obs_campo,
+                        'esta_corregido': False,
+                    }
+                )
+            elif estado_campo == 'BIEN':
+                # Si un ítem que era MALO se cambia a BIEN manualmente en la inspección original,
+                # se puede eliminar cualquier registro de corrección pendiente.
+                ChecklistCorreccion.objects.filter(
+                    inspeccion=self, 
+                    nombre_campo=campo, 
+                    esta_corregido=False
+                ).delete()
 
 # --- INICIO DE CÓDIGO AÑADIDO ---
 # ===================================================================
@@ -318,22 +361,21 @@ class AjusteInventario(models.Model):
         
 class AsignacionRevision(models.Model):
     """
-    Modela la asignación de una unidad a un técnico para revisión en una fecha específica.
+    Modela la asignación de una unidad para revisión en una fecha específica.
     """
     STATUS_CHOICES = [
         ('PENDIENTE', 'Pendiente'),
+        ('EN_PROCESO', 'En Proceso'),  # <--- AÑADIR ESTA LÍNEA
+        ('TERMINADO', 'Terminado'),
         ('CANCELADO', 'Cancelado'),
         ('NO_VINO', 'No Vino'),
     ]
 
     unidad = models.ForeignKey(Unidad, on_delete=models.CASCADE, verbose_name="Unidad Asignada")
-    tecnico_asignado = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Técnico Asignado")
     fecha_revision = models.DateField(verbose_name="Fecha de Revisión")
     
-    # ========= INICIO DE CAMPOS AÑADIDOS =========
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDIENTE', verbose_name="Estado")
     comentario_cancelacion = models.TextField(blank=True, null=True, verbose_name="Motivo de Cancelación")
-    # ========= FIN DE CAMPOS AÑADIDOS =========
     
     class Meta:
         verbose_name = "Asignación de Revisión"
@@ -347,15 +389,19 @@ class AsignacionRevision(models.Model):
     @property
     def proceso_del_dia(self):
         """
-        Busca y devuelve el ProcesoCarga completado para esta unidad en la fecha de revisión.
+        Busca y devuelve el ProcesoCarga asociado a esta asignación por unidad y fecha.
         """
-        if self.status != 'PENDIENTE':
-            return None # Si está cancelada, no buscamos proceso.
-            
         return ProcesoCarga.objects.filter(
             unidad=self.unidad,
             fecha_inicio__date=self.fecha_revision
         ).first()
+        
+    def save(self, *args, **kwargs):
+        # La lógica que estaba aquí (status_changed_to_pending) era incorrecta y
+        # trataba de actualizar el ProcesoCarga con campos que no existen.
+        # La eliminamos para que el guardado sea simple.
+        # La lógica de actualización se moverá a la vista EncargadoProcesoUreaView.
+        super().save(*args, **kwargs)
         
         
 class AlertaInventario(models.Model):
@@ -394,3 +440,67 @@ class AlertaInventario(models.Model):
     class Meta:
         verbose_name = "Alerta de Inventario"
         verbose_name_plural = "Alertas de Inventario"
+
+class ChecklistCorreccion(models.Model):
+    """
+    Almacena los ítems específicos de una inspección que fueron marcados como 'MALO'
+    y deben ser revisados y corregidos por el administrador.
+    """
+    inspeccion = models.ForeignKey(
+        ChecklistInspeccion, 
+        on_delete=models.CASCADE, 
+        related_name='correcciones'
+    )
+    # Almacena el nombre del campo del ChecklistInspeccion (ej: 'cristales', 'motor')
+    nombre_campo = models.CharField(
+        max_length=50, 
+        verbose_name="Ítem del Checklist"
+    ) 
+    
+    observacion_original = models.TextField(
+        blank=True, 
+        null=True,
+        verbose_name="Observación original del técnico"
+    ) 
+    
+    # --- CAMPOS NUEVOS PARA LA LÓGICA DEL ADMINISTRADOR ---
+    esta_corregido = models.BooleanField(
+        default=False, 
+        verbose_name="Corregido (Admin)"
+    ) # El campo que el admin "palomea" para cambiar a BIEN.
+    comentario_admin = models.TextField(
+        blank=True, 
+        null=True,
+        verbose_name="Comentario del Administrador"
+    )
+    fecha_correccion = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name="Fecha de Corrección"
+    )
+    corregido_por = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, blank=True,
+        verbose_name="Administrador que corrigió",
+        related_name='correcciones_checklist'
+    )
+    # --- FIN CAMPOS NUEVOS ---
+
+    def __str__(self):
+        return f"Corrección: {self.nombre_campo} - {self.inspeccion.unidad.nombre} ({'Pendiente' if not self.esta_corregido else 'Corregido'})"
+    
+    class Meta:
+        # Clave única para evitar dos registros de corrección abiertos para el mismo ítem.
+        unique_together = ('inspeccion', 'nombre_campo')
+        verbose_name = "Corrección de Checklist"
+        verbose_name_plural = "Correcciones de Checklist"
+        
+class ProcesoRevision(models.Model):
+    # ... otros campos ...
+    
+  asignacion = models.ForeignKey(
+        'AsignacionRevision', 
+        on_delete=models.CASCADE, 
+        related_name='procesos'  # <--- CAMBIO CLAVE A AÑADIR/MODIFICAR
+    )
+  

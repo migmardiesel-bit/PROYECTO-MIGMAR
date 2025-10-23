@@ -35,20 +35,6 @@
                             <div class="form-text">Seleccione la unidad a revisar</div>
                         </div>
                         
-                        <!-- Campo Técnico -->
-                        <div class="mb-4">
-                            <label for="{{ form.tecnico_asignado.id_for_label }}" class="form-label fw-semibold">
-                                <i class="fas fa-user me-2 text-primary"></i>Técnico Asignado
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-end-0">
-                                    <i class="fas fa-user-cog text-primary"></i>
-                                </span>
-                                {{ form.tecnico_asignado }}
-                            </div>
-                            <div class="form-text">Asigne el técnico responsable</div>
-                        </div>
-                        
                         <!-- Campo Fecha -->
                         <div class="mb-4">
                             <label for="{{ form.fecha_revision.id_for_label }}" class="form-label fw-semibold">
@@ -106,7 +92,6 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th class="ps-4">Unidad</th>
-                                    <th>Técnico</th>
                                     <th>Estado</th>
                                     <th class="text-center pe-4">Acciones</th>
                                 </tr>
@@ -126,31 +111,30 @@
                                         </div>
                                     </td>
                                     
-                                    <!-- Columna Técnico -->
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-shrink-0 bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                                <i class="fas fa-user text-primary"></i>
-                                            </div>
-                                            <div class="flex-grow-1 ms-2">
-                                                {{ asignacion.tecnico_asignado.get_full_name|default:asignacion.tecnico_asignado.username }}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    
                                     <!-- Columna Estado -->
                                     <td>
                                         {% if asignacion.status == 'PENDIENTE' %}
                                             <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2">
-                                                <i class="fas fa-clock me-1 text-primary"></i> Pendiente
+                                                <i class="fas fa-clock me-1"></i> Pendiente
                                             </span>
+                                        
+                                        {% elif asignacion.status == 'EN_PROCESO' %}
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-3 py-2">
+                                                <i class="fas fa-cogs fa-spin me-1"></i> En Proceso
+                                            </span>
+
+                                        {% elif asignacion.status == 'TERMINADO' %}
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2">
+                                                <i class="fas fa-check-circle me-1"></i> Terminado
+                                            </span>
+
                                         {% elif asignacion.status == 'CANCELADO' %}
                                             <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 py-2">
-                                                <i class="fas fa-ban me-1 text-primary"></i> Cancelado
+                                                <i class="fas fa-ban me-1"></i> Cancelado
                                             </span>
                                         {% elif asignacion.status == 'NO_VINO' %}
                                             <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-2">
-                                                <i class="fas fa-user-times me-1 text-primary"></i> No Vino
+                                                <i class="fas fa-user-times me-1"></i> No Vino
                                             </span>
                                         {% endif %}
                                         
@@ -218,7 +202,7 @@
                                 </div>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="4" class="text-center py-5">
+                                    <td colspan="3" class="text-center py-5">
                                         <div class="py-4">
                                             <i class="fas fa-inbox fa-3x text-primary mb-3"></i>
                                             <h5 class="text-muted">No hay unidades asignadas para esta fecha</h5>
