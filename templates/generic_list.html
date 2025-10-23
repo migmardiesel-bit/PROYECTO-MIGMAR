@@ -70,11 +70,11 @@
             {% if show_general_export_button %}
             <div class="row mt-3">
                 <div class="col-12 col-md-auto">
-                    {# Construimos la URL con todos los filtros activos #}
-                    <a href="{% url download_cargadiesel_reporte%}?start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&unidad={{ selected_unidad.pk|default:'' }}&tecnico={{ selected_tecnico.pk|default:'' }}&tipo_suministro={{ selected_tipo_suministro|default:'' }}" class="btn btn-success w-100">
+                    <!-- Corregido: solo filtros relevantes y usando export_url_name -->
+                    <a href="{% url export_url_name %}?start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&tipo_suministro={{ selected_tipo_suministro|default:'' }}" class="btn btn-success w-100">
                         <i class="fas fa-file-excel"></i> Exportar a Excel
                     </a>
-                    </div>
+                </div>
             </div>
             {% endif %}
         </div>

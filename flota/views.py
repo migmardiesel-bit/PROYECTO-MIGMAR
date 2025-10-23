@@ -663,7 +663,8 @@ class CompraSuministroListView(AdminRequiredMixin, ListView):
             'url_crear': 'comprasuministro-create', 
             'headers': ['#', 'Fecha', 'Proveedor', 'Suministro', 'Precio Total'], 
             'url_update_name': 'comprasuministro-update', 
-            'url_delete_name': 'comprasuministro-delete'
+            'url_delete_name': 'comprasuministro-delete',
+            # 'url_exportar_excel': 'comprasuministro-export-excel', # <--- Eliminamos esta línea
         })
         
         # Pasamos los valores de los filtros a la plantilla
@@ -673,6 +674,13 @@ class CompraSuministroListView(AdminRequiredMixin, ListView):
         
         # Pasamos las opciones del modelo para el dropdown del filtro
         context['tipos_suministro'] = CompraSuministro.TIPO_SUMINISTRO_CHOICES
+
+        # ========= INICIO DEL CÓDIGO A AGREGAR =========
+        # Habilita el botón de exportación en la plantilla
+        context['show_general_export_button'] = True
+        # Define la URL a la que apuntará el botón
+        context['export_url_name'] = 'comprasuministro-export-excel'
+        # ========= FIN DEL CÓDIGO A AGREGAR =========
         
         return context
 
@@ -2572,3 +2580,103 @@ class MonitorRevisionesView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         fecha_str = self.request.GET.get('fecha')
         fecha_filtro = parse_date(fecha_str) if fecha_str else timezone.localdate()
         return AsignacionRevision.objects.filter(fecha_revision=fecha_filtro).order_by('unidad__nombre')
+    
+@login_required
+def download_comprasuministro_excel(request):
+    """
+    Genera y devuelve un archivo Excel con el listado de Compras de Suministros, 
+    aplicando los filtros de fecha y tipo_suministro.
+    """
+    # 1. Obtener los filtros del GET request
+    tipo_filter = request.GET.get('tipo_suministro')
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+
+    # 2. Construir el QuerySet
+    queryset = CompraSuministro.objects.all().order_by('-fecha_compra')
+    
+    if tipo_filter:
+        queryset = queryset.filter(tipo_suministro=tipo_filter)
+
+    if start_date_str and end_date_str:
+        try:
+            # Asegúrese de tener 'date' importado de 'datetime'
+            start_date = date.fromisoformat(start_date_str)
+            end_date = date.fromisoformat(end_date_str)
+            queryset = queryset.filter(fecha_compra__date__range=[start_date, end_date])
+        except ValueError:
+            # Manejar error si el formato de fecha es incorrecto
+            pass
+
+    # 3. Crear el libro y la hoja de trabajo de Excel
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="Listado_Compras_Suministros.xlsx"'
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Compras_Suministros"
+    
+    # 4. Cabeceras
+    headers = [
+        "ID", 
+        "Fecha de Compra", 
+        "Tipo de Suministro", 
+        "Cantidad Comprada", 
+        "Costo Total ($)", 
+        "Precio por Litro/Unidad ($)",
+        "Proveedor", 
+        "Litros/Unidades Restantes"
+    ]
+    ws.append(headers)
+
+    # Aplicar formato a la cabecera
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+
+    # 5. Escribir los datos
+    row_num = 2
+    for compra in queryset:
+        # Formatear la fecha para mejor visualización
+        fecha_str = timezone.localtime(compra.fecha_compra).strftime('%Y-%m-%d %H:%M') if compra.fecha_compra else ''
+        
+        row = [
+            compra.pk,
+            fecha_str,
+            compra.get_tipo_suministro_display(),
+            compra.cantidad,
+            # ========= INICIO DE LA CORRECCIÓN =========
+            compra.precio, # <--- Cambia 'compra.costo' por 'compra.precio'
+            # ========= FIN DE LA CORRECCIÓN =========
+            compra.precio_por_litro,
+            compra.proveedor,
+            compra.litros_restantes,
+        ]
+        ws.append(row)
+        # Aplicar formato a los valores numéricos
+        ws[f'D{row_num}'].number_format = '#,##0.00'  # Cantidad
+        ws[f'E{row_num}'].number_format = '$#,##0.00' # Costo Total
+        ws[f'F{row_num}'].number_format = '$#,##0.00' # Precio/Unidad
+        ws[f'H{row_num}'].number_format = '#,##0.00'  # Restantes
+        
+        row_num += 1
+
+    # 6. Ajustar ancho de columnas automáticamente
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter # Get the column letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column].width = adjusted_width
+
+    # 7. Guardar el archivo y devolver la respuesta
+    wb.save(response)
+    return response

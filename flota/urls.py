@@ -115,4 +115,5 @@ urlpatterns = [
     path('cargas/diesel/exportar-excel/', download_cargadiesel_reporte, name='cargadiesel-export-excel'),    
     path('unidades/exportar-excel/', download_unidades_excel, name='unidades-export-excel'),
     path('revisiones/corregir-checklist-mal/', corregir_checklist_mal_view, name='corregir-checklist-mal'),
+    path('inventario/compras/exportar-excel/', download_comprasuministro_excel, name='comprasuministro-export-excel'),
 ]
