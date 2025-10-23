@@ -164,12 +164,18 @@ def send_refuel_notification(carga_diesel_instance):
     if carga_diesel_instance.lts_thermo and carga_diesel_instance.lts_thermo > 0:
         whatsapp_charge_details.append(f"  - Thermo: {carga_diesel_instance.lts_thermo:.2f} L")
 
-    # --- 2. Construir cuerpos completos de los mensajes ---
+    # --- 2. Convertir la fecha a la zona horaria local ---
+    # Convierte la fecha UTC de la BD a la hora local (definida en settings.py)
+    hora_local = timezone.localtime(carga_diesel_instance.fecha)
+    # Formatea la hora local
+    fecha_formateada = hora_local.strftime('%d/%m/%Y %H:%M')
+
+    # --- 3. Construir cuerpos completos de los mensajes ---
     email_subject = f"Notificación de Carga de Diésel - Unidad {unidad.nombre}"
     email_body = (
         f"Se ha registrado una nueva carga de combustible.\n\n"
         f"  - Unidad: {unidad.nombre}\n"
-        f"  - Fecha y Hora: {carga_diesel_instance.fecha.strftime('%d/%m/%Y %H:%M')}\n\n"
+        f"  - Fecha y Hora: {fecha_formateada}\n\n"  # <-- USA LA FECHA CORREGIDA
         f"DETALLE DE LA CARGA:\n"
         f"{'\n'.join(email_charge_details)}\n\n"
         "-------------------------------------\n"
@@ -183,6 +189,7 @@ def send_refuel_notification(carga_diesel_instance):
     whatsapp_body = (
         f"⛽ *Notificación de Carga*\n\n"
         f"▪️ *Unidad:* {unidad.nombre}\n"
+        f"▪️ *Fecha:* {fecha_formateada}\n" # <-- USA LA FECHA CORREGIDA
         f"*Detalle de Carga:*\n"
         f"{'\n'.join(whatsapp_charge_details)}\n\n"
         f"📊 *Inventario Actual:*\n"
@@ -191,7 +198,7 @@ def send_refuel_notification(carga_diesel_instance):
         f"  - Aceite: {current_levels.get('ACEITE', 0):.2f} L"
     )
 
-    # --- 3. Enviar Correo Electrónico ---
+    # --- 4. Enviar Correo Electrónico ---
     email_recipients = settings.INVENTORY_ALERT_SETTINGS.get('DIESEL', {}).get('recipients', [])
     if email_recipients:
         try:
@@ -200,7 +207,7 @@ def send_refuel_notification(carga_diesel_instance):
         except Exception as e:
             print(f"ERROR: No se pudo enviar el correo de notificación de carga. Error: {e}")
 
-    # --- 4. Enviar WhatsApp ---
+    # --- 5. Enviar WhatsApp ---
     try:
         client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
         for recipient in settings.WHATSAPP_RECIPIENTS:
