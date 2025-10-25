@@ -2166,7 +2166,7 @@ class AsignacionRevisionView(AdminRequiredMixin, CreateView):
             # 1. Obtener TODAS las fallas PENDIENTES (reales) para esta unidad
             fallas_pendientes = ChecklistCorreccion.objects.filter(
                 inspeccion__unidad=asignacion.unidad,
-                esta_corregido=False
+                status='PENDIENTE' # <-- CAMBIO: de esta_corregido=False a status='PENDIENTE'
             ).select_related('inspeccion') # Incluimos la inspección que originó la falla
 
             bad_items_list = []
@@ -2195,8 +2195,10 @@ class AsignacionRevisionView(AdminRequiredMixin, CreateView):
                     'label': label,
                     'obs': obs,
                     'foto': foto_obj,
-                    'esta_corregido': correccion_obj.esta_corregido,
-                    'comentario_admin': correccion_obj.comentario_admin or ""
+                    'esta_corregido': correccion_obj.status == 'CORREGIDO', # Mantenemos esta_corregido para compatibilidad de template
+                    'comentario_admin': correccion_obj.comentario_admin or "",
+                    'status': correccion_obj.get_status_display(), # <-- CAMBIO
+                    'status_raw': correccion_obj.status,           # <-- NUEVO: para lógica JS
                 })
 
             # 3. Guardar la lista de fallas y la fecha del último checklist
@@ -2450,7 +2452,6 @@ def download_unidades_excel(request):
 
 
 @login_required
-# @AdminRequiredMixin # Usar si aplica
 def corregir_checklist_mal_view(request):
     
     # 1. Definir el FormSet basado en el formulario de corrección
@@ -2462,17 +2463,44 @@ def corregir_checklist_mal_view(request):
     )
     
     # 2. Obtener los ítems MALO pendientes de corregir
-    # Filtra: esta_corregido=False.
-    # Usamos select_related para obtener los datos de la inspección y unidad en una consulta.
     queryset = ChecklistCorreccion.objects.filter(
-        esta_corregido=False
+        status='PENDIENTE'
     ).select_related(
         'inspeccion', 
-        'inspeccion__unidad'
+        'inspeccion__unidad',
+        'inspeccion__tecnico' # <-- Añadir 'inspeccion__tecnico'
     ).order_by(
         'inspeccion__fecha', # Segregado por fecha de inspección
         'inspeccion__unidad__nombre'
     )
+    
+    # --- INICIO: LÓGICA DE FILTROS GET MODIFICADA ---
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+    unidad_id = request.GET.get('unidad')
+    tecnico_id = request.GET.get('tecnico') # <-- NUEVA LÍNEA
+    
+    selected_unidad = None
+    selected_tecnico = None # <-- NUEVA LÍNEA
+
+    if start_date_str and end_date_str:
+        try:
+            start_date = date.fromisoformat(start_date_str)
+            end_date = date.fromisoformat(end_date_str)
+            queryset = queryset.filter(inspeccion__fecha__date__range=[start_date, end_date])
+        except ValueError:
+            start_date_str = '' 
+            end_date_str = ''
+    
+    if unidad_id:
+        queryset = queryset.filter(inspeccion__unidad_id=unidad_id)
+        selected_unidad = Unidad.objects.filter(pk=unidad_id).first()
+
+    # --- NUEVO: Procesar filtro de técnico ---
+    if tecnico_id:
+        queryset = queryset.filter(inspeccion__tecnico_id=tecnico_id)
+        selected_tecnico = User.objects.filter(pk=tecnico_id).first()
+    # --- FIN: LÓGICA DE FILTROS GET MODIFICADA ---
     
     
     if request.method == 'POST':
@@ -2481,44 +2509,46 @@ def corregir_checklist_mal_view(request):
         if formset.is_valid():
             with transaction.atomic():
                 correcciones_count = 0
-                correcciones_pendientes_a_comentar = 0
+                descartes_count = 0
+                comentarios_count = 0
                 
                 for form in formset:
                     if form.has_changed():
                         instance = form.save(commit=False)
                         
-                        # A) Lógica de corrección total (marcado y cambio de estado)
-                        if instance.esta_corregido and 'esta_corregido' in form.changed_data: 
-                            # Asigna datos de corrección
+                        marcar_corregido = form.cleaned_data.get('marcar_corregido')
+                        marcar_descartado = form.cleaned_data.get('marcar_descartado')
+                        inspeccion_original = instance.inspeccion
+                        
+                        if marcar_corregido:
+                            instance.status = 'CORREGIDO'
+                            instance.comentario_admin = form.cleaned_data.get('comentario_admin', '')
                             instance.corregido_por = request.user 
                             instance.fecha_correccion = timezone.now()
                             instance.save() 
-                            correcciones_count += 1
                             
-                            # **LOGICA CLAVE: ACTUALIZAR ChecklistInspeccion a BIEN**
-                            # Usamos el nombre_campo para actualizar dinámicamente el campo de la inspección.
-                            inspeccion_original = instance.inspeccion
-                            
-                            # 1. Actualiza el campo de estado a 'BIEN'
                             setattr(inspeccion_original, instance.nombre_campo, 'BIEN')
-                            
-                            # 2. Opcional: Borra la foto y observación original (ya corregido)
-                            # setattr(inspeccion_original, f'{instance.nombre_campo}_obs', '')
-                            # setattr(inspeccion_original, f'{instance.nombre_campo}_foto', None)
-
-                            # 3. Guarda la inspección (el .save() *no* regenerará el error porque ya es 'BIEN')
                             inspeccion_original.save() 
+                            correcciones_count += 1
+                        
+                        elif marcar_descartado:
+                            instance.status = 'DESCARTADO'
+                            instance.comentario_admin = form.cleaned_data.get('comentario_admin', '')
+                            instance.corregido_por = request.user 
+                            instance.fecha_correccion = timezone.now() 
+                            instance.save() 
+                            
+                            setattr(inspeccion_original, instance.nombre_campo, 'BIEN')
+                            inspeccion_original.save() 
+                            descartes_count += 1
 
-                        # B) Lógica para guardar solo el comentario, si no se marcó como corregido
                         elif 'comentario_admin' in form.changed_data:
                             instance.save()
-                            correcciones_pendientes_a_comentar += 1
+                            comentarios_count += 1
 
-
-                messages.success(request, f"Se han procesado {correcciones_count} correcciones. Los ítems corregidos han cambiado su estado a BIEN en la inspección original.")
+                messages.success(request, f"Proceso completado: {correcciones_count} ítems corregidos, {descartes_count} ítems descartados, {comentarios_count} comentarios actualizados.")
                 
-                # Una vez guardado, redirigir a la misma página para ver la lista actualizada
-                return redirect('corregir-checklist-mal')
+                return redirect(request.get_full_path())
         else:
             messages.error(request, "Error en el formulario. Por favor, revisa los datos.")
     else:
@@ -2526,19 +2556,18 @@ def corregir_checklist_mal_view(request):
 
     # 3. Lógica de Agrupación por Fecha para el Template
     items_agrupados = {}
-    form_map = {form.instance.id: form for form in formset} # Mapear ID -> Formulario
+    form_map = {form.instance.id: form for form in formset} 
     
     for detalle in queryset:
-        # Usamos .date() para agrupar por el día, ignorando la hora
         fecha_inspeccion = detalle.inspeccion.fecha.date() 
         if fecha_inspeccion not in items_agrupados:
             items_agrupados[fecha_inspeccion] = []
         
-        # Asignar el formulario y la etiqueta legible al objeto detalle
         detalle.form = form_map.get(detalle.id)
-        # La etiqueta legible se puede obtener del verbose_name del campo original
-        # Si no existe (porque no usamos el modelo original), usamos el nombre_campo
         detalle.etiqueta_legible = detalle.inspeccion._meta.get_field(detalle.nombre_campo).verbose_name or detalle.nombre_campo.replace('_', ' ').title()
+        
+        foto_obj = getattr(detalle.inspeccion, f"{detalle.nombre_campo}_foto", None)
+        detalle.foto = foto_obj
         
         items_agrupados[fecha_inspeccion].append(detalle)
 
@@ -2551,6 +2580,11 @@ def corregir_checklist_mal_view(request):
         'titulo': 'Panel de Corrección de Checklist (MALO)',
         'items_agrupados': data_for_template,
         'formset': formset,
+        # --- Pasar nuevos filtros a la plantilla ---
+        'start_date': start_date_str,
+        'end_date': end_date_str,
+        'selected_unidad': selected_unidad,
+        'selected_tecnico': selected_tecnico, # <-- NUEVA LÍNEA
     }
     
     return render(request, 'flota/corregir_checklist_mal.html', context)
@@ -2741,6 +2775,7 @@ def api_corregir_falla_checklist(request, pk):
     """
     API interna para guardar una corrección de checklist desde el modal
     usando AJAX.
+    (MODIFICADA para aceptar 'marcar_corregido' y 'marcar_descartado')
     """
     if not (es_admin(request.user) or es_encargado(request.user)):
         return JsonResponse({'status': 'error', 'message': 'No tienes permiso.'}, status=403)
@@ -2749,42 +2784,62 @@ def api_corregir_falla_checklist(request, pk):
         # 1. Encontrar el objeto de corrección
         correccion = get_object_or_404(ChecklistCorreccion, pk=pk)
         
-        # 2. Leer los datos enviados desde el JavaScript (en formato JSON)
+        # 2. Leer los datos enviados
         data = json.loads(request.body)
-        esta_corregido = data.get('esta_corregido', False)
+        marcar_corregido = data.get('marcar_corregido', False)
+        marcar_descartado = data.get('marcar_descartado', False)
         comentario_admin = data.get('comentario_admin', '')
 
-        # 3. Validar y actualizar el objeto
-        if esta_corregido and not correccion.esta_corregido:
-            # Si se está marcando como corregido AHORA
-            correccion.esta_corregido = True
-            correccion.comentario_admin = comentario_admin
-            correccion.corregido_por = request.user
-            correccion.fecha_correccion = timezone.now()
+        # 3. Validar (que no sean ambos)
+        if marcar_corregido and marcar_descartado:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'No puede marcar un ítem como "Corregido" y "Descartado" al mismo tiempo.'
+            }, status=400)
+
+        # 4. Aplicar la lógica de guardado
+        with transaction.atomic():
+            if marcar_corregido and correccion.status == 'PENDIENTE':
+                # LÓGICA 1: Se marcó como CORREGIDO
+                correccion.status = 'CORREGIDO'
+                correccion.comentario_admin = comentario_admin
+                correccion.corregido_por = request.user
+                correccion.fecha_correccion = timezone.now()
+                
+                inspeccion_original = correccion.inspeccion
+                setattr(inspeccion_original, correccion.nombre_campo, 'BIEN')
+                inspeccion_original.save() 
+                correccion.save()
+
+            elif marcar_descartado and correccion.status == 'PENDIENTE':
+                # LÓGICA 2: Se marcó como DESCARTADO
+                correccion.status = 'DESCARTADO'
+                correccion.comentario_admin = comentario_admin
+                correccion.corregido_por = request.user 
+                correccion.fecha_correccion = timezone.now()
+                
+                inspeccion_original = correccion.inspeccion
+                setattr(inspeccion_original, correccion.nombre_campo, 'BIEN')
+                inspeccion_original.save()
+                correccion.save()
+
+            elif not marcar_corregido and not marcar_descartado:
+                # LÓGICA 3: Solo se cambió el comentario
+                correccion.comentario_admin = comentario_admin
+                correccion.save()
             
-            # **LÓGICA CLAVE: Actualizar el ChecklistInspeccion original**
-            # (Copiada de tu vista 'corregir_checklist_mal_view')
-            inspeccion_original = correccion.inspeccion
-            setattr(inspeccion_original, correccion.nombre_campo, 'BIEN')
-            inspeccion_original.save() # Guarda el cambio en el checklist original
+            # (Si ya estaba corregido/descartado, no hacer nada más que guardar comentario)
+            elif correccion.status != 'PENDIENTE':
+                 correccion.comentario_admin = comentario_admin
+                 correccion.save()
 
-        elif not esta_corregido:
-             # Si se desmarca (o solo se guarda comentario)
-             # Nota: Por seguridad, no permitimos "des-corregir" fácilmente,
-             # pero sí permitimos guardar solo el comentario.
-             correccion.comentario_admin = comentario_admin
-        
-        else:
-            # Si ya estaba corregido y solo se actualiza el comentario
-            correccion.comentario_admin = comentario_admin
-
-        correccion.save() # Guarda los cambios en el objeto ChecklistCorreccion
 
         return JsonResponse({
             'status': 'ok',
             'message': 'Corrección guardada exitosamente.',
             'fecha_correccion': correccion.fecha_correccion.strftime('%d/%m/%Y') if correccion.fecha_correccion else None,
-            'corregido_por': correccion.corregido_por.get_full_name() if correccion.corregido_por else None
+            'corregido_por': correccion.corregido_por.get_full_name() if correccion.corregido_por else None,
+            'new_status': correccion.get_status_display(),
         })
 
     except json.JSONDecodeError:
@@ -2884,7 +2939,7 @@ def download_correcciones_report_excel(request, pk):
 
     queryset = ChecklistCorreccion.objects.filter(
         inspeccion__unidad=unidad,
-        esta_corregido=True,
+        status='CORREGIDO', # <-- CAMBIO: de esta_corregido=True a status='CORREGIDO'
         fecha_correccion__date__range=[start_date, end_date]
     ).select_related(
         'inspeccion', 'corregido_por', 'inspeccion__tecnico'

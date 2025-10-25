@@ -329,16 +329,38 @@ class ChecklistCorreccionForm(forms.ModelForm):
     # Usamos un campo oculto para el ID del registro de corrección
     id = forms.IntegerField(widget=forms.HiddenInput())
     
-    esta_corregido = forms.BooleanField(
+    # --- INICIO DE CAMPOS NUEVOS (No-Modelo) ---
+    marcar_corregido = forms.BooleanField(
         required=False,
-        label="Corregido (Marcar para cambiar a BIEN)",
+        label="Corregido",
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
     
+    marcar_descartado = forms.BooleanField(
+        required=False,
+        label="Descartar",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input text-danger bg-danger'})
+    )
+    # --- FIN DE CAMPOS NUEVOS ---
+    
     class Meta:
         model = ChecklistCorreccion
-        # Solo necesitamos los campos de corrección del administrador
-        fields = ['id', 'esta_corregido', 'comentario_admin'] 
+        # 'esta_corregido' se quita, 'status' no se maneja aquí directamente
+        fields = ['id', 'comentario_admin'] 
         widgets = {
             'comentario_admin': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Comentario de la corrección/revisión'}),
         }
+
+    # --- INICIO DE VALIDACIÓN AÑADIDA ---
+    def clean(self):
+        cleaned_data = super().clean()
+        corregido = cleaned_data.get('marcar_corregido')
+        descartado = cleaned_data.get('marcar_descartado')
+
+        if corregido and descartado:
+            # Lanza un error que se mostrará en el formulario
+            raise ValidationError(
+                "No puede marcar un ítem como 'Corregido' y 'Descartado' al mismo tiempo.",
+                code='invalid_choice'
+            )
+        return cleaned_data

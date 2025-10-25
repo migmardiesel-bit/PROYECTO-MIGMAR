@@ -249,40 +249,32 @@ class ChecklistInspeccion(models.Model):
                 # El técnico marcó MALO.
                 
                 # REQUISITO 1 y 3: Verificar si ya existe una falla PENDIENTE
-                # (esta_corregido=False) para esta MISMA UNIDAD y este MISMO CAMPO.
+                # (status='PENDIENTE') para esta MISMA UNIDAD y este MISMO CAMPO.
                 existing_pending_fault = ChecklistCorreccion.objects.filter(
                     inspeccion__unidad=self.unidad, # Busca en TODAS las inspecciones de esta UNIDAD
                     nombre_campo=campo,
-                    esta_corregido=False # Y que esté PENDIENTE
+                    status='PENDIENTE' # <-- CAMBIO: de esta_corregido=False a status='PENDIENTE'
                 ).exists() # Solo necesitamos saber si existe (True/False)
 
                 if not existing_pending_fault:
                     # No existe una falla pendiente para este ítem en esta unidad.
                     # Por lo tanto, creamos una NUEVA falla.
-                    # Usamos get_or_create() para evitar duplicados si el técnico
-                    # guarda esta *misma* inspección varias veces.
                     obs_campo = getattr(self, f'{campo}_obs', None)
                     ChecklistCorreccion.objects.get_or_create(
                         inspeccion=self, # Se asocia a ESTA inspección
                         nombre_campo=campo,
                         defaults={
                             'observacion_original': obs_campo,
-                            'esta_corregido': False,
+                            'status': 'PENDIENTE', # <-- CAMBIO: de esta_corregido=False a status='PENDIENTE'
                         }
                     )
                 # else:
                     # Ya existe una falla pendiente (existing_pending_fault = True).
                     # NO creamos una nueva. No hacemos nada.
-                    # (Cumple Requisito 1: "no duplicarlo")
                     pass
 
             elif estado_campo == 'BIEN':
                 # El técnico marcó BIEN.
-                
-                # REQUISITO 2: "si esta como mala y el tecnico la pone como bien 
-                # que la falla aun queda registrada"
-                
-                # La lógica anterior (que eliminaba la falla) se remueve.
                 # Un técnico marcando "BIEN" no debe tener efecto sobre
                 # los registros de ChecklistCorreccion pendientes.
                 pass
@@ -488,11 +480,20 @@ class ChecklistCorreccion(models.Model):
         verbose_name="Observación original del técnico"
     ) 
     
-    # --- CAMPOS NUEVOS PARA LA LÓGICA DEL ADMINISTRADOR ---
-    esta_corregido = models.BooleanField(
-        default=False, 
-        verbose_name="Corregido (Admin)"
-    ) # El campo que el admin "palomea" para cambiar a BIEN.
+    # --- CAMPO 'esta_corregido' REEMPLAZADO ---
+    STATUS_CHOICES = [
+        ('PENDIENTE', 'Pendiente'),
+        ('CORREGIDO', 'Corregido (Reparado)'),
+        ('DESCARTADO', 'Descartado (Admin)'),
+    ]
+    status = models.CharField(
+        max_length=10, 
+        choices=STATUS_CHOICES, 
+        default='PENDIENTE', 
+        verbose_name="Estado"
+    )
+    # --- FIN DEL REEMPLAZO ---
+
     comentario_admin = models.TextField(
         blank=True, 
         null=True,
@@ -500,7 +501,7 @@ class ChecklistCorreccion(models.Model):
     )
     fecha_correccion = models.DateTimeField(
         null=True, blank=True,
-        verbose_name="Fecha de Corrección"
+        verbose_name="Fecha de Corrección/Descarte"
     )
     corregido_por = models.ForeignKey(
         User, 
@@ -509,23 +510,14 @@ class ChecklistCorreccion(models.Model):
         verbose_name="Administrador que corrigió",
         related_name='correcciones_checklist'
     )
-    # --- FIN CAMPOS NUEVOS ---
 
     def __str__(self):
-        return f"Corrección: {self.nombre_campo} - {self.inspeccion.unidad.nombre} ({'Pendiente' if not self.esta_corregido else 'Corregido'})"
+        # --- CAMBIO: Actualizado para usar el nuevo campo status ---
+        return f"Corrección: {self.nombre_campo} - {self.inspeccion.unidad.nombre} ({self.get_status_display()})"
     
     class Meta:
         # Clave única para evitar dos registros de corrección abiertos para el mismo ítem.
         unique_together = ('inspeccion', 'nombre_campo')
         verbose_name = "Corrección de Checklist"
         verbose_name_plural = "Correcciones de Checklist"
-        
-class ProcesoRevision(models.Model):
-    # ... otros campos ...
-    
-  asignacion = models.ForeignKey(
-        'AsignacionRevision', 
-        on_delete=models.CASCADE, 
-        related_name='procesos'  # <--- CAMBIO CLAVE A AÑADIR/MODIFICAR
-    )
   

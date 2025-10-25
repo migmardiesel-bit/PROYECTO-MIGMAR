@@ -136,17 +136,28 @@
                                 <small class="opacity-75">Revisiones programadas para la fecha seleccionada</small>
                             </div>
                         </div>
-                        <form method="get" class="d-flex align-items-center">
-                            <div class="input-group input-group-sm shadow-sm">
-                                <span class="input-group-text bg-white border-end-0">
-                                    <i class="fas fa-filter text-primary"></i>
-                                </span>
-                                <input type="date" name="fecha" value="{{ fecha_filtro|date:'Y-m-d' }}" class="form-control border-start-0">
-                                <button type="submit" class="btn btn-light border">
-                                    <i class="fas fa-search me-1 text-primary"></i> Filtrar
-                                </button>
-                            </div>
-                        </form>
+                        
+                        <!-- Reemplazado: formulario de filtro + botón "Ver Monitor" -->
+                        <div class="d-flex align-items-center">
+                            <form method="get" class="d-flex align-items-center me-2">
+                                <div class="input-group input-group-sm shadow-sm">
+                                    <span class="input-group-text bg-white border-end-0">
+                                        <i class="fas fa-filter text-primary"></i>
+                                    </span>
+                                    <input id="filterFechaInput" type="date" name="fecha" value="{{ fecha_filtro|date:'Y-m-d' }}" class="form-control border-start-0">
+                                    <button type="submit" class="btn btn-light border">
+                                        <i class="fas fa-search me-1 text-primary"></i> Filtrar
+                                    </button>
+                                </div>
+                            </form>
+
+                            <!-- Botón Ver Monitor: data-base-url contiene la ruta base y se actualizará desde JS -->
+                            <a id="verMonitorBtn" data-base-url="{% url 'monitor-revisiones' %}" 
+                               href="{% url 'monitor-revisiones' %}?fecha={{ fecha_filtro|date:'Y-m-d' }}" 
+                               class="btn btn-light btn-sm shadow-sm text-primary fw-bold">
+                                <i class="fas fa-tv me-1"></i> Ver Monitor
+                            </a>
+                        </div>
                     </div>
                     
                     <div class="card-body p-3 bg-light-subtle border-top border-bottom">
@@ -305,6 +316,7 @@
                                     </div>
                                 </div>
 
+                                <!-- === MODAL CHECKLIST (REEMPLAZADO) === -->
                                 <div class="modal fade" id="checklistModal-{{ asignacion.pk }}" tabindex="-1" aria-hidden="true" 
                                      data-unidad-pk="{{ asignacion.unidad.pk }}"> <div class="modal-dialog modal-dialog-centered modal-xl">
                                         <div class="modal-content border-0 shadow-lg">
@@ -339,12 +351,12 @@
                                                         </div>
                                                     </form>
                                                 </div>
-                                                
+
                                                 {% if asignacion.bad_items_list %}
                                                     <div class="alert alert-light" role="alert">
                                                         Mostrando <strong>{{ asignacion.bad_items_list|length }}</strong> falla(s) del último checklist (Fecha: {{ asignacion.latest_checklist_date|date:"d M, Y H:i" }})
                                                     </div>
-                                                    
+
                                                     <div class="list-group list-group-flush shadow-sm">
                                                         {% for item in asignacion.bad_items_list %}
                                                         <div class="list-group-item p-3" onclick="event.stopPropagation();">
@@ -363,7 +375,7 @@
                                                                         </div>
                                                                     {% endif %}
                                                                 </div>
-                                                                
+
                                                                 <div class="col-md-4">
                                                                     <strong class="d-block text-dark">{{ item.label }}</strong>
                                                                     <small class="text-muted fst-italic">"{{ item.obs|default:"Sin observación."|truncatechars:100 }}"</small>
@@ -374,35 +386,60 @@
                                                                         <textarea class="form-control" placeholder="Comentario de Admin" 
                                                                                   id="comentario-{{ item.id }}" 
                                                                                   style="height: 100px"
-                                                                                  {% if item.esta_corregido %}readonly{% endif %}>{{ item.comentario_admin|default:"" }}</textarea>
+                                                                                  {% if item.status_raw != 'PENDIENTE' %}readonly{% endif %}>{{ item.comentario_admin|default:"" }}</textarea>
                                                                         <label for="comentario-{{ item.id }}">Comentario de Corrección (Admin)</label>
                                                                     </div>
-                                                                    {% if item.esta_corregido %}
-                                                                        <div class="alert alert-success d-flex align-items-center mt-2 p-2" role="alert">
-                                                                            <i class="fas fa-check-circle me-2"></i>
+
+                                                                    {% comment %} Mostrar estado si no está pendiente y hay fecha de acción {% endcomment %}
+                                                                    {% if item.status_raw != 'PENDIENTE' and item.fecha_correccion %}
+                                                                        <div class="alert 
+                                                                            {% if item.status_raw == 'CORREGIDO' %}alert-success{% else %}alert-secondary{% endif %} 
+                                                                            d-flex align-items-center mt-2 p-2" role="alert">
+                                                                            <i class="fas {% if item.status_raw == 'CORREGIDO' %}fa-check-circle{% else %}fa-ban{% endif %} me-2"></i>
                                                                             <small>
-                                                                                Corregido por <strong>{{ item.corregido_por.username|default:'N/A' }}</strong>
+                                                                                {{ item.status }} por <strong>{{ item.corregido_por.username|default:'N/A' }}</strong>
                                                                                 el {{ item.fecha_correccion|date:"d M Y, H:i" }}
                                                                             </small>
                                                                         </div>
                                                                     {% endif %}
-                                                                    </div>
-                                                                
+                                                                </div>
+
                                                                 <div class="col-md-2 text-center">
-                                                                    <div class="form-check form-switch mb-2">
-                                                                        <input class="form-check-input" type="checkbox" role="switch" id="corregido-{{ item.id }}"
-                                                                               {% if item.esta_corregido %}checked disabled{% endif %}>
-                                                                        <label class="form-check-label" for="corregido-{{ item.id }}">
-                                                                            {% if item.esta_corregido %}Corregido{% else %}Corregir{% endif %}
-                                                                        </label>
-                                                                    </div>
-                                                                    
-                                                                    <button class="btn btn-success btn-sm w-100 btn-guardar-correccion shadow-sm" 
-                                                                            data-item-pk="{{ item.id }}" 
-                                                                            data-url="{% url 'api-corregir-falla' item.id %}"
-                                                                            {% if item.esta_corregido %}disabled{% endif %}>
-                                                                        <i class="fas fa-save me-1"></i> Guardar
-                                                                    </button>
+                                                                    {% if item.status_raw == 'PENDIENTE' %}
+                                                                        <div class="form-check form-switch mb-2">
+                                                                            <input class="form-check-input check-corregir" type="checkbox" role="switch" 
+                                                                                   id="corregido-{{ item.id }}" data-item-pk="{{ item.id }}">
+                                                                            <label class="form-check-label" for="corregido-{{ item.id }}">
+                                                                                ✅ Corregir
+                                                                            </label>
+                                                                        </div>
+
+                                                                        <div class="form-check form-switch mb-2">
+                                                                            <input class="form-check-input check-descartar" type="checkbox" role="switch" 
+                                                                                   id="descartado-{{ item.id }}" data-item-pk="{{ item.id }}">
+                                                                            <label class="form-check-label text-danger" for="descartado-{{ item.id }}">
+                                                                                ❌ Descartar
+                                                                            </label>
+                                                                        </div>
+
+                                                                        <button class="btn btn-success btn-sm w-100 btn-guardar-correccion shadow-sm" 
+                                                                                data-item-pk="{{ item.id }}" 
+                                                                                data-url="{% url 'api-corregir-falla' item.id %}">
+                                                                            <i class="fas fa-save me-1"></i> Guardar
+                                                                        </button>
+                                                                    {% else %}
+                                                                        <span class="badge 
+                                                                            {% if item.status_raw == 'CORREGIDO' %}bg-success{% else %}bg-secondary{% endif %} 
+                                                                            text-white rounded-pill py-2 px-3">
+                                                                            {% if item.status_raw == 'CORREGIDO' %}<i class="fas fa-check-circle me-1"></i> Corregido{% else %}<i class="fas fa-ban me-1"></i> Descartado{% endif %}
+                                                                        </span>
+
+                                                                        <div class="mt-2">
+                                                                            <button class="btn btn-secondary btn-sm w-100 shadow-sm" disabled>
+                                                                                <i class="fas fa-lock me-1"></i> Guardado
+                                                                            </button>
+                                                                        </div>
+                                                                    {% endif %}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -428,6 +465,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                <!-- === FIN MODAL CHECKLIST === -->
 
                                 {% empty %}
                                 <tr>
@@ -574,9 +612,7 @@
             })
     })();
 
-    // --- Visor de Imágenes (MODIFICADO) ---
-    // Antes se escuchaba un click global; ahora se usa el evento show.bs.modal para obtener
-    // el relatedTarget (el thumbnail) y usar su data-full-src al abrir el modal.
+    // --- Visor de Imágenes (Existente) ---
     const imageViewerModalEl = document.getElementById('image-viewer-modal');
     if (imageViewerModalEl) {
         imageViewerModalEl.addEventListener('show.bs.modal', function (event) {
@@ -604,7 +640,7 @@
 
     function showToast(message, type = 'success') {
         // Limpiar clases anteriores
-        toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'text-white');
+        toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'text-white', 'text-dark');
         
         if (type === 'success') {
             toastTitleEl.innerText = 'Éxito';
@@ -625,23 +661,30 @@
 
     document.addEventListener('DOMContentLoaded', () => {
 
-        // --- Guardar Correcciones AJAX (Modificado para usar Toasts) ---
+        // --- Guardar Correcciones AJAX (Actualizado para corregir/descartar) ---
         const saveButtons = document.querySelectorAll('.btn-guardar-correccion');
         saveButtons.forEach(button => {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
-                e.stopPropagation(); 
-                
+                e.stopPropagation();
+
                 const pk = this.dataset.itemPk;
                 const url = this.dataset.url;
-                
-                const checkbox = document.getElementById(`corregido-${pk}`);
+
+                const corregido_cb = document.getElementById(`corregido-${pk}`);
+                const descartado_cb = document.getElementById(`descartado-${pk}`);
                 const textarea = document.getElementById(`comentario-${pk}`);
-                // const feedback = document.getElementById(`feedback-${pk}`); // Ya no se usa
-                
+
+                // Validación: No permitir ambos seleccionados
+                if (corregido_cb && descartado_cb && corregido_cb.checked && descartado_cb.checked) {
+                    showToast('No puede marcar un ítem como "Corregido" y "Descartado" al mismo tiempo.', 'danger');
+                    return;
+                }
+
                 const data = {
-                    esta_corregido: checkbox.checked,
-                    comentario_admin: textarea.value
+                    marcar_corregido: corregido_cb ? corregido_cb.checked : false,
+                    marcar_descartado: descartado_cb ? descartado_cb.checked : false,
+                    comentario_admin: textarea ? textarea.value : ''
                 };
 
                 button.disabled = true;
@@ -657,37 +700,32 @@
                 })
                 .then(response => {
                     if (!response.ok) {
-                        // Si la respuesta no es 2xx, la trata como error
                         return response.json().then(err => { throw new Error(err.message || 'Error en el servidor'); });
                     }
                     return response.json();
                 })
                 .then(result => {
                     if (result.status === 'ok') {
-                        // --- USA TOAST ---
-                        showToast('¡Corrección guardada exitosamente!', 'success');
-                        
-                        if (checkbox.checked) {
-                            checkbox.disabled = true;
-                            textarea.readOnly = true;
+                        showToast('¡Cambio guardado exitosamente!', 'success');
+
+                        // Si se marcó corregido o descartado, recargar para ver el nuevo estado
+                        if (data.marcar_corregido || data.marcar_descartado) {
                             button.innerHTML = '<i class="fas fa-check"></i> Guardado';
-                            // Recargar la página para ver los datos del admin que corrigió (o hacer un update más complejo)
-                            setTimeout(() => { location.reload(); }, 1500); // Recarga para ver los cambios
+                            setTimeout(() => { location.reload(); }, 1200);
                         } else {
+                            // Solo comentario guardado
                             button.disabled = false;
                             button.innerHTML = '<i class="fas fa-save me-1"></i> Guardar';
                         }
                     } else {
-                        // --- USA TOAST ---
                         showToast(result.message || 'Error desconocido al guardar.', 'danger');
-                        button.disabled = false; 
+                        button.disabled = false;
                         button.innerHTML = '<i class="fas fa-save me-1"></i> Guardar';
                     }
                 })
                 .catch(error => {
-                    // --- USA TOAST ---
                     showToast(error.message || 'Error de red. No se pudo guardar.', 'danger');
-                    button.disabled = false; 
+                    button.disabled = false;
                     button.innerHTML = '<i class="fas fa-save me-1"></i> Guardar';
                 });
             });
@@ -758,6 +796,52 @@
         if (statusFilter) statusFilter.addEventListener('change', filterTable);
         
         // --- FIN NUEVO ---
+
+        // --- NUEVO: Actualizar enlace "Ver Monitor" según la fecha seleccionada ---
+        (function() {
+            const fechaInput = document.getElementById('filterFechaInput');
+            const monitorBtn = document.getElementById('verMonitorBtn');
+            if (!monitorBtn) return;
+
+            const baseUrl = monitorBtn.dataset.baseUrl || monitorBtn.getAttribute('href') || '';
+
+            function updateMonitorHref() {
+                const fecha = (fechaInput && fechaInput.value) ? fechaInput.value : '';
+                // Si no hay fecha, dejar la url base sin query (o añadir la fecha por defecto)
+                monitorBtn.href = fecha ? `${baseUrl}?fecha=${encodeURIComponent(fecha)}` : baseUrl;
+            }
+
+            // Actualizar al cargar y cuando cambie la fecha
+            updateMonitorHref();
+            if (fechaInput) fechaInput.addEventListener('change', updateMonitorHref);
+        })();
+
+        // --- Evitar selección mutua de checkboxes dentro de cada modal ---
+        const allModals = document.querySelectorAll('[id^="checklistModal-"]');
+        allModals.forEach(modal => {
+            const corregirChecks = modal.querySelectorAll('.check-corregir');
+            const descartarChecks = modal.querySelectorAll('.check-descartar');
+
+            corregirChecks.forEach(cb => {
+                cb.addEventListener('change', function() {
+                    if (this.checked) {
+                        const pk = this.dataset.itemPk;
+                        const otherCb = modal.querySelector(`#descartado-${pk}`);
+                        if (otherCb) otherCb.checked = false;
+                    }
+                });
+            });
+
+            descartarChecks.forEach(cb => {
+                cb.addEventListener('change', function() {
+                    if (this.checked) {
+                        const pk = this.dataset.itemPk;
+                        const otherCb = modal.querySelector(`#corregido-${pk}`);
+                        if (otherCb) otherCb.checked = false;
+                    }
+                });
+            });
+        });
 
     });
 
