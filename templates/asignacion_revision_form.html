@@ -526,6 +526,16 @@
     .fa-spin {
         animation: fa-spin 1s infinite linear;
     }
+
+    /* --- NUEVO: Estilos para el visor de imágenes en modal --- */
+    #modal-image-content {
+        max-height: 85vh;      /* Limita la altura para que no desborde la pantalla */
+        object-fit: contain;   /* Mantiene la proporción y centra la imagen dentro del contenedor */
+        width: 100%;
+        display: block;
+        margin: 0 auto;
+        background-color: #000; /* opcional: fondo oscuro detrás de la imagen */
+    }
 </style>
 {% endblock %}
 
@@ -564,15 +574,26 @@
             })
     })();
 
-    // --- Visor de Imágenes (Existente) ---
-    document.addEventListener('click', function(e) {
-        if (e.target && e.target.dataset.fullSrc) {
-            var modalImage = document.getElementById('modal-image-content');
+    // --- Visor de Imágenes (MODIFICADO) ---
+    // Antes se escuchaba un click global; ahora se usa el evento show.bs.modal para obtener
+    // el relatedTarget (el thumbnail) y usar su data-full-src al abrir el modal.
+    const imageViewerModalEl = document.getElementById('image-viewer-modal');
+    if (imageViewerModalEl) {
+        imageViewerModalEl.addEventListener('show.bs.modal', function (event) {
+            const trigger = event.relatedTarget; // elemento que disparó el modal (la miniatura)
+            const fullSrc = trigger && trigger.dataset ? trigger.dataset.fullSrc : '';
+            const modalImage = document.getElementById('modal-image-content');
             if (modalImage) {
-                modalImage.src = e.target.dataset.fullSrc;
+                modalImage.src = fullSrc || '';
             }
-        }
-    });
+        });
+
+        // Limpiar src al ocultar para evitar mostrar imagen antigua al abrir sin trigger válido
+        imageViewerModalEl.addEventListener('hidden.bs.modal', function () {
+            const modalImage = document.getElementById('modal-image-content');
+            if (modalImage) modalImage.src = '';
+        });
+    }
 
 
     // --- NUEVO: Lógica de Notificaciones (Toast) ---
