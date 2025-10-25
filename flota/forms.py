@@ -221,9 +221,14 @@ class ChecklistInspeccionForm(forms.ModelForm):
                     'rows': 2,
                     'placeholder': 'Describir el problema detalladamente...'
                 })
+                
+            # ========= INICIO DE LA MODIFICACIÓN =========
+            # Localiza este bloque 'elif'
             elif isinstance(field, forms.ImageField):
                 field.widget.attrs.update({
                     'class': 'form-control evidence-field',
+                    'accept': 'image/*',       # <-- AÑADIR: Especifica que solo se aceptan imágenes
+                    'capture': 'environment'    # <-- AÑADIR: Pide usar la cámara (trasera)
                 })
 
 class LlantasInspeccionForm(forms.ModelForm):
