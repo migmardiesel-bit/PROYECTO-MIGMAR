@@ -3217,4 +3217,4 @@ def search_operadores_api(request):
     term = request.GET.get('term', '')
     operadores = Operador.objects.filter(Q(nombre__icontains=term) | Q(apellido__icontains=term))[:15]
     results = [{'id': o.id, 'text': f"{o.nombre} {o.apellido}"} for o in operadores]
-    return JsonResponse({'results': results})
+    return JsonResponse({'results': results}) #121
