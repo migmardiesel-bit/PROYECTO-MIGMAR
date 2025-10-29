@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.85); z-index: 1050; align-items: center; justify-content: center; color: white; text-align: center; flex-direction: column;">
+    
+    <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Cargando...</span>
+    </div>
+
+    <h2 class="mt-3">Guardando Checklist...</h2>
+    <p class="lead">Subiendo fotos al servidor. No cierres esta ventana.</p>
+    
+    <p style="font-size: 1.2em;">
+        Tiempo estimado: <strong id="countdown-timer">24</strong> segundos
+    </p>
+
+</div>
+
+<div class="container-fluid py-4">
+    <form method="post" novalidate enctype="multipart/form-data" id="checklistForm">
+        {% csrf_token %}
+
+        {{ form.unidad }}
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h4 class="m-0 font-weight-bold text-primary">{{ titulo }}</h4>
+            </div>
+            <div class="card-body">
+                <div class="row border-bottom pb-3 mb-3">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label font-weight-bold">Unidad</label>
+                        <p class="form-control-plaintext">{{ unidad.nombre }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.operador.id_for_label }}" class="form-label font-weight-bold">Operador</label>
+                        {% render_field form.operador class="form-select" %}
+                        {% if form.operador.errors %}
+                            <div class="invalid-feedback d-block">{{ form.operador.errors.as_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.foto_odometro.id_for_label }}" class="form-label font-weight-bold">
+                            <i class="fas fa-tachometer-alt me-1 text-primary"></i> {{ form.foto_odometro.label }}
+                        </label>
+                        <p class="form-text text-muted small mt-0 mb-2">Tome una foto clara del odómetro para verificar el kilometraje. Este campo es obligatorio.</p>
+                        
+                        {% if form.foto_odometro.errors %}
+                            {% render_field form.foto_odometro class="form-control is-invalid" %}
+                            <div class="invalid-feedback d-block">{{ form.foto_odometro.errors.as_text }}</div>
+                        {% else %}
+                            {% render_field form.foto_odometro class="form-control" %}
+                        {% endif %}
+                    </div>
+
+                    {% if unidad.tipo == 'R' or unidad.tipo == 'A' %}
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.foto_thermo_hrs.id_for_label }}" class="form-label font-weight-bold">
+                            <i class="fas fa-snowflake me-1 text-primary"></i> {{ form.foto_thermo_hrs.label }}
+                        </label>
+                        <p class="form-text text-muted small mt-0 mb-2">Tome una foto clara del horómetro del Thermo King.</p>
+                        
+                        {% if form.foto_thermo_hrs.errors %}
+                            {% render_field form.foto_thermo_hrs class="form-control is-invalid" %}
+                            <div class="invalid-feedback d-block">{{ form.foto_thermo_hrs.errors.as_text }}</div>
+                        {% else %}
+                            {% render_field form.foto_thermo_hrs class="form-control" %}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if unidad.tipo == 'R' or unidad.tipo == 'A' %}
+                    <div class="col-md-12 mb-3">
+                       </div>
+                    {% endif %}
+                    
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.foto_sticker.id_for_label }}" class="form-label font-weight-bold">
+                            <i class="fas fa-sticky-note me-1 text-primary"></i> {{ form.foto_sticker.label }}
+                        </label>
+                        <p class="form-text text-muted small mt-0 mb-2">Tome una foto clara del sticker (si aplica).</p>
+                        
+                        {% if form.foto_sticker.errors %}
+                            {% render_field form.foto_sticker class="form-control is-invalid" %}
+                            <div class="invalid-feedback d-block">{{ form.foto_sticker.errors.as_text }}</div>
+                        {% else %}
+                            {% render_field form.foto_sticker class="form-control" %}
+                        {% endif %}
+                    </div>
+                    </div>  {# cierre de: <div class="row border-bottom pb-3 mb-3"> #}
+
+
+                {% for group_name, fields in structured_form.items %}
+                <h5 class="text-secondary mt-4 mb-3">{{ group_name }}</h5>
+                <div class="row">
+                    {% for field_item in fields %}
+                    <div class="col-lg-6">
+                        <div class="card mb-3">
+                            <div class="card-body p-3">
+                                <div class="row align-items-center">
+                                    <div class="col-sm-5">
+                                        <label class="form-label mb-0">{{ field_item.status.label }}</label>
+                                    </div>
+                                    <div class="col-sm-7">
+                                        {{ field_item.status }}
+                                    </div>
+                                </div>
+                                
+                                {% if field_item.observation or field_item.evidence %}
+                                <div class="extra-fields mt-2" style="display: none;">
+                                    {% if field_item.observation %}
+                                        {% render_field field_item.observation class="form-control mb-2" %}
+                                    {% endif %}
+                                    {% if field_item.evidence %}
+                                        <label class="form-label small">Evidencia (Foto):</label>
+                                        {% render_field field_item.evidence class="form-control" %}
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+            </div>
+            <div class="card-footer text-end">
+                <a href="{% url 'tecnico-seleccionar-unidad' %}" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" id="submitButton" class="btn btn-primary">Siguiente: Formato de Llantas <i class="fas fa-arrow-right ms-2"></i></button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Itera sobre cada selector de estado (Bien/Malo)
+    document.querySelectorAll('select[class*="form-select-sm"]').forEach(function(select) {
+        // Encuentra el contenedor de campos extra más cercano
+        const extraFieldsContainer = select.closest('.card-body').querySelector('.extra-fields');
+        
+        // Si no existe el contenedor, no hace nada
+        if (!extraFieldsContainer) return;
+
+        function toggleExtraFields() {
+            // Si el valor seleccionado es "MALO", muestra el contenedor
+            if (select.value === 'MALO') {
+                extraFieldsContainer.style.display = 'block';
+            } else {
+                // De lo contrario, lo oculta
+                extraFieldsContainer.style.display = 'none';
+            }
+        }
+        
+        // Ejecuta la función una vez al cargar la página para establecer el estado inicial
+        toggleExtraFields();
+        // Añade un listener para que la función se ejecute cada vez que cambie la selección
+        select.addEventListener('change', toggleExtraFields);
+    });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checklistForm = document.getElementById('checklistForm');
+    const submitButton = document.getElementById('submitButton');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const countdownElement = document.getElementById('countdown-timer');
+
+    if (!checklistForm) return;
+
+    checklistForm.addEventListener('submit', function(e) {
+        // Mostrar overlay
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'flex';
+        }
+
+        // Deshabilitar botón y mostrar spinner pequeño
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.innerHTML = `
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Guardando...
+            `;
+        }
+
+        // Iniciar contador estimado (24s)
+        if (countdownElement) {
+            let secondsLeft = 24;
+            countdownElement.innerText = secondsLeft;
+
+            const timerInterval = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft > 0) {
+                    countdownElement.innerText = secondsLeft;
+                } else {
+                    countdownElement.innerText = '...';
+                    clearInterval(timerInterval);
+                    if (loadingOverlay) {
+                        const lead = loadingOverlay.querySelector('.lead');
+                        if (lead) {
+                            lead.innerText = "Casi listo, procesando en el servidor...";
+                        }
+                    }
+                }
+            }, 1000); // 1000ms = 1 segundo
+        }
+    });
+});
+</script>
+{% endblock %}

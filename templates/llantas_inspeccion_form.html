@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h1 class="h3 mb-0 text-primary">{{ titulo }}</h1>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.unidad.id_for_label }}" class="form-label fw-bold">{{ form.unidad.label }}</label>
+                                {{ form.unidad|add_class:"form-select" }}
+                                {% for error in form.unidad.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.km.id_for_label }}" class="form-label fw-bold">{{ form.km.label }}</label>
+                                {{ form.km|add_class:"control" }}
+                                {% for error in form.km.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h5 class="mb-3">Detalles de las Llantas</h5>
+
+                        {{ formset.management_form }}
+                        {% if formset.non_form_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in formset.non_form_errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle">
+                                <thead class="table-light text-center">
+                                    <tr>
+                                        <th style="width: 20%;">Posición</th>
+                                        <th style="width: 10%;">MM</th>
+                                        <th style="width: 20%;">Marca</th>
+                                        <th style="width: 20%;">Modelo</th>
+                                        <th style="width: 15%;">Medida</th>
+                                        <th style="width: 10%;">Presión (PSI)</th>
+                                        {% if formset.can_delete %}<th>Eliminar</th>{% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for form in formset %}
+                                    <tr>
+                                        <td>
+                                            {% if form.instance.pk %}
+                                                {{ form.instance.posicion }}
+                                            {% else %}
+                                                {{ form.posicion.value }}
+                                            {% endif %}
+                                            
+                                            {{ form.posicion }}
+                                            </td>
+                                        <td>{{ form.mm|add_class:"form-control form-control-sm" }}</td>
+                                        <td>{{ form.marca|add_class:"form-control form-control-sm text-uppercase" }}</td>
+                                        <td>{{ form.modelo|add_class:"form-control form-control-sm text-uppercase" }}</td>
+                                        <td>{{ form.medida|add_class:"form-control form-control-sm text-uppercase" }}</td>
+                                        <td>{{ form.presion|add_class:"form-control form-control-sm" }}</td>
+                                        {% if formset.can_delete %}
+                                            <td class="text-center">{{ form.DELETE }}</td>
+                                        {% endif %}
+                                    </tr>
+                                    {% for field, errors in form.errors.items %}
+                                        {% if field != '__all__' %}
+                                            {% for error in errors %}
+                                                <tr class="table-danger"><td colspan="7" class="text-danger small ps-2">Error en la fila (campo {{ field }}): {{ error }}</td></tr>
+                                            {% endfor %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="{% url 'llantas-list' %}" class="btn btn-outline-secondary me-2">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Guardar Inspección
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

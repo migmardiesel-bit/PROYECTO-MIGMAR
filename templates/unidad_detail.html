@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Detalle de la Unidad: {{ object.marca }} {{ object.modelo }}</h2>
+    </div>
+    <div class="card-body">
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item"><strong>Placas:</strong> {{ object.placas|default:"N/A" }}</li>
+            <li class="list-group-item"><strong>VIN:</strong> {{ object.vin|default:"N/A" }}</li>
+            <li class="list-group-item"><strong>Tipo:</strong> {{ object.get_tipo_display }}</li>
+            <li class="list-group-item"><strong>Kilometraje Actual:</strong> {{ object.km_actual }} km</li>
+            <li class="list-group-item"><strong>Póliza:</strong> {{ object.poliza|default:"N/A" }}</li>
+            <li class="list-group-item"><strong>TAG:</strong> {{ object.tag|default:"N/A" }}</li>
+        </ul>
+    </div>
+    <div class="card-footer">
+        <a href="{% url 'unidad-update' object.pk %}" class="btn btn-secondary">Editar</a>
+        <a href="{% url 'unidad-list' %}" class="btn btn-primary">Volver a la lista</a>
+    </div>
+</div>
+{% endblock %}

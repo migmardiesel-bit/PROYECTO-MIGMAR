@@ -1,0 +1,154 @@
+{# Se asume que este es el contenido de 'unidad_reporte_detalle.html' #}
+{# Se añade un botón de descarga y se mejora la presentación #}
+
+{% extends 'base.html' %} {# O tu plantilla base #}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">{{ titulo }}</h4>
+            <a href="{% url 'unidad-reporte-pdf' pk=unidad.pk %}?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" class="btn btn-light btn-sm">
+                <i class="fas fa-file-pdf"></i> Descargar PDF
+            </a>
+        </div>
+        
+        <div class="card-body">
+            <form method="get" class="mb-4 p-3 border rounded bg-light">
+                <div class="row align-items-end">
+                    <div class="col-md-5">
+                        <label for="start_date" class="form-label">Fecha de Inicio</label>
+                        <input type="date" name="start_date" id="start_date" value="{{ start_date|date:'Y-m-d' }}" class="form-control">
+                    </div>
+                    <div class="col-md-5">
+                        <label for="end_date" class="form-label">Fecha de Fin</label>
+                        <input type="date" name="end_date" id="end_date" value="{{ end_date|date:'Y-m-d' }}" class="form-control">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-success w-100">Filtrar</button>
+                    </div>
+                </div>
+            </form>
+
+            <h5>Resumen General</h5>
+            <div class="row mb-4">
+                <div class="col-md-4"><strong>Tipo:</strong> {{ unidad.get_tipo_display }}</div>
+                <div class="col-md-4"><strong>Placas:</strong> {{ unidad.placas }}</div>
+                <div class="col-md-4"><strong>KM Actual:</strong> {{ unidad.km_actual }} km</div>
+                <div class="col-md-4"><strong>Últimas Horas Thermo:</strong> {{ ultimas_horas_thermo }}</div>
+            </div>
+
+            <h5 class="mt-4">Fallas Reportadas en Checklist</h5>
+            {% if fallas_checklist %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Componente</th>
+                                <th>Observación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for falla in fallas_checklist %}
+                            <tr>
+                                <td>{{ falla.fecha|date:"d/m/Y H:i" }}</td>
+                                <td>{{ falla.componente }}</td>
+                                <td>{{ falla.observacion }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">No se encontraron fallas en este periodo.</div>
+            {% endif %}
+
+            <h5 class="mt-4">🚨 Alertas de Llantas</h5>
+            {% if alertas_llantas %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Técnico</th>
+                                <th>Posición</th>
+                                <th class="text-center">MM</th>
+                                <th class="text-center">Presión (PSI)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for alerta in alertas_llantas %}
+                            <tr>
+                                <td>{{ alerta.fecha|date:"d/m/Y H:i" }}</td>
+                                <td>{{ alerta.tecnico }}</td>
+                                <td>{{ alerta.posicion }}</td>
+                                <td class="text-center fw-bold {% if alerta.status_mm == 'ROJO' %}text-danger{% elif alerta.status_mm == 'AMARILLO' %}text-warning{% endif %}">
+                                    {{ alerta.mm }}
+                                </td>
+                                <td class="text-center fw-bold {% if alerta.status_presion == 'ROJO' %}text-danger{% elif alerta.status_presion == 'AMARILLO' %}text-warning{% endif %}">
+                                    {{ alerta.presion }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">No se registraron alertas de llantas en este periodo.</div>
+            {% endif %}
+
+            <h5 class="mt-4">Cargas de Diésel</h5>
+             {% if cargas_diesel %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead class="table-dark">
+                           <tr>
+                               <th>Fecha</th>
+                               <th>KM</th>
+                               <th>Lts. Motor</th>
+                               <th>Lts. Thermo</th>
+                               <th>Costo</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                        {% for carga in cargas_diesel %}
+                           <tr>
+                               <td>{{ carga.fecha|date:"d/m/Y" }}</td>
+                               <td>{{ carga.km_actual }}</td>
+                               <td>{{ carga.lts_diesel }}</td>
+                               <td>{{ carga.lts_thermo|default_if_none:"-" }}</td>
+                               <td>${{ carga.costo|default_if_none:"0.00" }}</td>
+                           </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                 <div class="alert alert-info">No hay cargas de diésel registradas en este periodo.</div>
+            {% endif %}
+
+            <h5 class="mt-4">Evidencia Fotográfica</h5>
+            {% if fotos_evidencia %}
+                <div class="row">
+                {% for foto in fotos_evidencia %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card">
+                            <a href="{{ foto.url }}" target="_blank">
+                                <img src="{{ foto.url }}" class="card-img-top" alt="Evidencia de {{ foto.componente }}" style="height: 200px; object-fit: cover;">
+                            </a>
+                            <div class="card-body">
+                                <h6 class="card-title">{{ foto.componente }}</h6>
+                                <p class="card-text"><small class="text-muted">{{ foto.fecha|date:"d/m/Y" }}</small></p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-info">No hay evidencia fotográfica disponible.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

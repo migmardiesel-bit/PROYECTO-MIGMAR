@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>{{ titulo }}</h2>
+    <p class="lead">Lista de ítems del checklist con estado **MALO** pendientes. **Segregados por fechas** de inspección.</p>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="get" class="card card-body mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="id_start_date" class="form-label">Fecha Inicio (Inspección)</label>
+                <input type="date" name="start_date" class="form-control" id="id_start_date" value="{{ start_date|default:'' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="id_end_date" class="form-label">Fecha Fin (Inspección)</label>
+                <input type="date" name="end_date" class="form-control" id="id_end_date" value="{{ end_date|default:'' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="id_unidad_search" class="form-label">Unidad</label>
+                <select name="unidad" id="id_unidad_search" class="form-select">
+                    {% if selected_unidad %}
+                    <option value="{{ selected_unidad.id }}" selected>{{ selected_unidad.nombre }}</option>
+                    {% endif %}
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <label for="id_tecnico_search" class="form-label">Técnico (Reportó)</label>
+                <select name="tecnico" id="id_tecnico_search" class="form-select">
+                    {% if selected_tecnico %}
+                    <option value="{{ selected_tecnico.id }}" selected>{{ selected_tecnico.get_full_name|default:selected_tecnico.username }}</option>
+                    {% endif %}
+                </select>
+            </div>
+            <div class="col-md-12 text-end">
+                <a href="{% url 'corregir-checklist-mal' %}" class="btn btn-secondary mt-1 btn-sm">Limpiar Filtros</a>
+                <button type="submit" class="btn btn-primary mt-1">Filtrar</button>
+            </div>
+        </div>
+    </form>
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="imageModalLabel">Evidencia</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <img src="" id="modalImage" class="img-fluid" alt="Evidencia">
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    {% if items_agrupados %}
+        <form method="post">
+            {% csrf_token %}
+            {{ formset.management_form }}
+            
+            {% for grupo in items_agrupados %}
+                <div class="card mb-4 shadow-sm">
+                    <div class="card-header bg-danger text-white">
+                        <h4 class="mb-0">Inspecciones del: {{ grupo.fecha|date:"d M, Y" }}</h4>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Unidad</th>
+                                        <th>Ítem de Checklist</th>
+                                        <th>Observación Original</th>
+                                        <th class="text-center">Foto</th>
+                                        <th class="text-center">✅ Corregido</th>
+                                        <th class="text-center">❌ Descartar</th>
+                                        <th style="min-width: 250px;">Comentario de Corrección (Admin)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for detalle in grupo.detalles %}
+                                    <tr id="row-{{ detalle.id }}">
+                                        <td><strong>{{ detalle.inspeccion.unidad.nombre }}</strong></td>
+                                        <td>{{ detalle.etiqueta_legible }}</td>
+                                        <td>{{ detalle.observacion_original|default:"N/A" }}</td>
+                                        
+                                        <td class="text-center align-middle">
+                                            {% if detalle.foto and detalle.foto.url %}
+                                                <img src="{{ detalle.foto.url }}" 
+                                                     alt="Evidencia" 
+                                                     style="width: 60px; height: 60px; object-fit: cover; cursor: pointer;"
+                                                     class="img-thumbnail"
+                                                     data-bs-toggle="modal" 
+                                                     data-bs-target="#imageModal"
+                                                     data-bs-image-src="{{ detalle.foto.url }}">
+                                            {% else %}
+                                                <span class="text-muted small">Sin foto</span>
+                                            {% endif %}
+                                        </td>
+                                        
+                                        <td class="text-center align-middle">
+                                            {{ detalle.form.id }}
+                                            {{ detalle.form.marcar_corregido }}
+                                        </td>
+                                        
+                                        <td class="text-center align-middle">
+                                            {{ detalle.form.marcar_descartado }}
+                                        </td>
+                                        
+                                        <td>
+                                            {{ detalle.form.comentario_admin }}
+                                            {% if detalle.form.non_field_errors %}
+                                                <div class="text-danger small fw-bold">
+                                                    {% for error in detalle.form.non_field_errors %}
+                                                        {{ error }}
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            
+            <button type="submit" class="btn btn-success btn-lg shadow-lg mt-4 mb-5 fixed-bottom-right" style="position: fixed; bottom: 15px; right: 15px; z-index: 1000;">
+                Guardar Cambios
+            </button>
+        </form>
+    {% else %}
+        <div class="alert alert-info mt-4">
+            ¡🎉 No hay ítems de checklist en estado **MALO** pendientes de corrección (según los filtros aplicados)!
+        </div>
+    {% endif %}
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Lógica del Modal de Imagen
+    var imageModal = document.getElementById('imageModal');
+    if (imageModal) {
+        imageModal.addEventListener('show.bs.modal', function (event) {
+            // Botón que disparó el modal (la imagen en miniatura)
+            var triggerElement = event.relatedTarget;
+            // Extraer la URL de la imagen completa del atributo data-bs-image-src
+            var imageURL = triggerElement.getAttribute('data-bs-image-src');
+            // Actualizar el src de la imagen dentro del modal
+            var modalImage = imageModal.querySelector('#modalImage');
+            modalImage.src = imageURL;
+        });
+    }
+
+    // 2. Lógica de Select2 para el filtro de Unidad
+    // (Asegúrate de tener jQuery y Select2 cargados en tu base.html)
+    if (typeof $ !== 'undefined' && typeof $.fn.select2 === 'function') {
+        $('#id_unidad_search').select2({
+            placeholder: 'Buscar unidad...',
+            allowClear: true,
+            width: '100%',
+            ajax: {
+                url: "{% url 'api-search-unidades' %}",
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        term: params.term // término de búsqueda
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data.results
+                    };
+                },
+                cache: true
+            }
+        });
+
+        // ======== NUEVO: LÓGICA SELECT2 PARA TÉCNICO ========
+        $('#id_tecnico_search').select2({
+            placeholder: 'Buscar técnico...',
+            allowClear: true,
+            width: '100%',
+            ajax: {
+                url: "{% url 'api-search-tecnicos' %}", // Reutilizamos la API de técnicos
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        term: params.term 
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data.results
+                    };
+                },
+                cache: true
+            }
+        });
+        // ======== FIN DE LÓGICA SELECT2 ========
+
+    } else {
+        console.warn("jQuery o Select2 no están cargados. El filtro de unidad no será interactivo.");
+    }
+});
+</script>
+{% endblock extra_js %}

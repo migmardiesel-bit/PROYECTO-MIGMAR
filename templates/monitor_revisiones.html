@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Tarjeta principal mejorada -->
+    <div class="card shadow-lg border-0">
+        <!-- Header con gradiente -->
+        <div class="card-header bg-gradient-primary text-white py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0 fw-bold">{{ titulo }}</h4>
+                <form method="get" class="d-flex align-items-center">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white"><i class="fas fa-calendar-alt"></i></span>
+                        <input type="date" name="fecha" value="{{ fecha_filtro|date:'Y-m-d' }}" class="form-control">
+                        <button type="submit" class="btn btn-light btn-sm">Ver Día</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Cuerpo de la tarjeta -->
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="ps-4">Unidad</th>
+                            <th>Estado / Progreso</th>
+                            <th>Tiempo Total</th>
+                            <th class="text-center pe-4">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in monitor_data %}
+                        <tr class="{% if item.asignacion.status != 'PENDIENTE' %}table-secondary{% endif %}">
+                            <!-- Columna Unidad -->
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                                        <i class="fas fa-bus"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <strong class="fw-bold">{{ item.asignacion.unidad.nombre }}</strong>
+                                    </div>
+                                </div>
+                            </td>
+                            
+                            <!-- Columna Estado/Progreso -->
+                            <td>
+                                {% if item.asignacion.status != 'PENDIENTE' and item.asignacion.status != 'EN_PROCESO' and item.asignacion.status != 'TERMINADO' %}
+                                    <div class="py-2">
+                                        {% if item.asignacion.status == 'CANCELADO' %}
+                                            <span class="badge bg-danger rounded-pill px-3 py-2 fs-6">
+                                                <i class="fas fa-ban me-1"></i> CANCELADO
+                                            </span>
+                                        {% elif item.asignacion.status == 'NO_VINO' %}
+                                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fs-6">
+                                                <i class="fas fa-user-times me-1"></i> NO VINO
+                                            </span>
+                                        {% endif %}
+                                        {% if item.asignacion.comentario_cancelacion %}
+                                            <div class="mt-2 p-2 bg-light rounded">
+                                                <p class="small text-muted mb-0 fst-italic">
+                                                    <i class="fas fa-comment me-1"></i> "{{ item.asignacion.comentario_cancelacion }}"
+                                                </p>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    {% if item.asignacion.status == 'TERMINADO' %}
+                                        <span class="badge bg-success rounded-pill px-3 py-2 fs-6">
+                                            <i class="fas fa-check-circle me-1"></i> TERMINADO
+                                        </span>
+                                    {% elif item.asignacion.status == 'EN_PROCESO' %}
+                                        <span class="badge bg-info text-dark rounded-pill px-3 py-2 fs-6 mb-2">
+                                            <i class="fas fa-cogs fa-spin me-1"></i> EN PROCESO
+                                        </span>
+                                    {% elif item.asignacion.status == 'PENDIENTE' %}
+                                         <span class="badge bg-light text-dark border rounded-pill px-3 py-2 fs-6 mb-2">
+                                            <i class="fas fa-clock me-1"></i> PENDIENTE
+                                        </span>
+                                    {% endif %}
+                                
+                                    <div class="d-flex justify-content-between align-items-center px-2 mt-2">
+                                        <div class="text-center">
+                                            <div class="mb-1 {% if item.checklist_ok %}text-success{% else %}text-muted{% endif %}">
+                                                <i class="fas {% if item.checklist_ok %}fa-check-circle{% else %}fa-times-circle{% endif %} fa-lg"></i>
+                                            </div>
+                                            <small class="text-muted">Checklist</small>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="mb-1 {% if item.llantas_ok %}text-success{% else %}text-muted{% endif %}">
+                                                <i class="fas {% if item.llantas_ok %}fa-check-circle{% else %}fa-times-circle{% endif %} fa-lg"></i>
+                                            </div>
+                                            <small class="text-muted">Llantas</small>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="mb-1 {% if item.diesel_ok %}text-success{% else %}text-muted{% endif %}">
+                                                <i class="fas {% if item.diesel_ok %}fa-check-circle{% else %}fa-times-circle{% endif %} fa-lg"></i>
+                                            </div>
+                                            <small class="text-muted">Diésel</small>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="mb-1 {% if item.urea_ok %}text-success{% else %}text-muted{% endif %}">
+                                                {% if item.urea_ok %}
+                                                    <i class="fas fa-check-circle text-success fa-lg"></i>
+                                                {% else %}
+                                                    <i class="fas {% if item.asignacion.status == 'EN_PROCESO' %}fa-circle-notch fa-spin{% else %}fa-times-circle{% endif %} text-muted" title="Opcional/Pendiente"></i>
+                                                {% endif %}
+                                            </div>
+                                            <small class="text-muted">Urea</small>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- Columna Tiempo Total -->
+                            <td>
+                                {% if item.tiempo_total %}
+                                    <span class="badge bg-info text-dark p-2 rounded-pill">
+                                        <i class="fas fa-clock me-1"></i> {{ item.tiempo_total }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            
+                            <!-- Columna Acciones -->
+                            <td class="text-center pe-4">
+                                {% if item.asignacion.status == 'PENDIENTE' %}
+                                <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#cancelModal-{{ item.asignacion.pk }}">
+                                    <i class="fas fa-ban me-1"></i> Cancelar
+                                </button>
+                                {% else %}
+                                    <span class="text-muted small">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                        <!-- Modal de Cancelación -->
+                        <div class="modal fade" id="cancelModal-{{ item.asignacion.pk }}" tabindex="-1" aria-labelledby="cancelModalLabel-{{ item.asignacion.pk }}" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title" id="cancelModalLabel-{{ item.asignacion.pk }}">
+                                            <i class="fas fa-exclamation-triangle me-2"></i> Cancelar Revisión
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <form action="{% url 'cancelar-revision' item.asignacion.pk %}" method="post">
+                                        {% csrf_token %}
+                                        <div class="modal-body py-4">
+                                            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                <div>
+                                                    Está a punto de cancelar la revisión de <strong>{{ item.asignacion.unidad.nombre }}</strong>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="status-{{ item.asignacion.pk }}" class="form-label fw-bold">Motivo de la cancelación</label>
+                                                <select name="status" id="status-{{ item.asignacion.pk }}" class="form-select" required>
+                                                    <option value="CANCELADO">Cancelado (Ej: Falla mecánica mayor)</option>
+                                                    <option value="NO_VINO">No se presentó la unidad</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="comentario-{{ item.asignacion.pk }}" class="form-label fw-bold">Comentario (Opcional)</label>
+                                                <textarea name="comentario" id="comentario-{{ item.asignacion.pk }}" class="form-control" rows="3" placeholder="Añada más detalles aquí..."></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                                            <button type="submit" class="btn btn-danger rounded-pill px-4">
+                                                <i class="fas fa-ban me-1"></i> Confirmar Cancelación
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5">
+                                <div class="py-4">
+                                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No hay revisiones programadas para esta fecha</h5>
+                                    <a href="{% url 'asignar-revision' %}" class="btn btn-primary mt-3 rounded-pill px-4">
+                                        <i class="fas fa-plus me-1"></i> Asignar Revisiones
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+    }
+    
+    .table > :not(:first-child) {
+        border-top: 2px solid #e9ecef;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(58, 123, 213, 0.05);
+    }
+    
+    .card {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .card-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .modal-content {
+        border-radius: 12px;
+    }
+    
+    .btn {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}

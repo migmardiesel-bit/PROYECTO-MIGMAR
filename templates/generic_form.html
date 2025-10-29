@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h4 class="m-0 font-weight-bold text-primary">{{ titulo }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" novalidate enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        {# Los errores generales ahora están aquí arriba para máxima visibilidad #}
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                <strong>Por favor, corrige los siguientes errores:</strong>
+                                {% for error in form.non_field_errors %}
+                                    <p class="mb-0">{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        
+                        {% for hidden_field in form.hidden_fields %}
+                            {{ hidden_field }}
+                        {% endfor %}
+
+                        <div class="row">
+                        {% for field in form.visible_fields %}
+                            <div class="col-md-6 mb-4" id="div_{{ field.auto_id }}">
+                                <label for="{{ field.id_for_label }}" class="form-label font-weight-bold">{{ field.label }}</label>
+                                
+                                {# --- MEJORA: Se añade la clase 'is-invalid' si el campo tiene errores --- #}
+                                {% if field.field.disabled %}
+                                    {% render_field field class="form-control-plaintext" readonly=True %}
+                                {% else %}
+                                    {% if field.errors %}
+                                        {% render_field field class="form-control is-invalid" %}
+                                    {% else %}
+                                        {% render_field field class="form-control" %}
+                                    {% endif %}
+                                {% endif %}
+                                
+                                {% if field.help_text %}
+                                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                                {% endif %}
+
+                                {# El bloque de errores para cada campo se mantiene igual #}
+                                {% for error in field.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        </div>
+                        
+                        <div class="d-flex justify-content-end border-top pt-3 mt-3">
+                            {# --- MEJORA: El botón de cancelar ahora es dinámico --- #}
+                            {% if url_cancelar %}
+                                <a href="{{ url_cancelar }}" class="btn btn-danger me-2">Cancelar</a>
+                            {% else %}
+                                <a href="{% url 'home' %}" class="btn btn-secondary me-2">Cancelar</a>
+                            {% endif %}
+                            
+                            <button type="submit" class="btn btn-success">
+                                {% if 'Urea' in titulo or 'Finalizar' in titulo %}
+                                    Finalizar Proceso <i class="fas fa-check-circle ms-2"></i>
+                                {% else %}
+                                    Siguiente <i class="fas fa-arrow-right ms-2"></i>
+                                {% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# El bloque de Javascript se mantiene exactamente igual, ya está bien hecho. #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isDieselForm = document.getElementById('id_lts_diesel') !== null;
+    if (!isDieselForm) {
+        return;
+    }
+    const unidadSelect = document.getElementById('id_unidad');
+    const ltsThermoContainer = document.getElementById('div_id_lts_thermo');
+    const hrsThermoContainer = document.getElementById('div_id_hrs_thermo');
+
+    if (!unidadSelect || !ltsThermoContainer || !hrsThermoContainer) {
+        return;
+    }
+
+    function toggleThermoFields(unidadId) {
+        if (!unidadId) {
+            ltsThermoContainer.style.display = 'none';
+            hrsThermoContainer.style.display = 'none';
+            return;
+        }
+
+        fetch(`/api/get-unidad-tipo/?unidad_id=${unidadId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.tipo === 'S') {
+                    ltsThermoContainer.style.display = 'none';
+                    hrsThermoContainer.style.display = 'none';
+                    const ltsThermoInput = document.getElementById('id_lts_thermo');
+                    const hrsThermoInput = document.getElementById('id_hrs_thermo');
+                    if(ltsThermoInput) ltsThermoInput.value = '';
+                    if(hrsThermoInput) hrsThermoInput.value = '';
+                } else {
+                    ltsThermoContainer.style.display = '';
+                    hrsThermoContainer.style.display = '';
+                }
+            })
+            .catch(error => {
+                console.error('Error al obtener el tipo de unidad:', error);
+                ltsThermoContainer.style.display = 'none';
+                hrsThermoContainer.style.display = 'none';
+            });
+    }
+
+    if (unidadSelect.value) {
+        toggleThermoFields(unidadSelect.value);
+    } else {
+        ltsThermoContainer.style.display = 'none';
+        hrsThermoContainer.style.display = 'none';
+    }
+
+    unidadSelect.addEventListener('change', function() {
+        toggleThermoFields(this.value);
+    });
+});
+</script>
+{% endblock %}

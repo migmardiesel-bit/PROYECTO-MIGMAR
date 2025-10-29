@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {{ titulo }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-warning">
+            <h4 class="mb-0">{{ titulo }}</h4>
+        </div>
+        <div class="card-body">
+            {% if procesos_pendientes %}
+                <p>A continuación se muestran los procesos que fueron iniciados pero no han sido completados. Como administrador, puedes tomar el control y finalizar el proceso de carga.</p>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Unidad</th>
+                                <th>Iniciado por</th>
+                                <th>Fecha de Inicio</th>
+                                <th class="text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for proceso in procesos_pendientes %}
+                            <tr>
+                                <td>{{ proceso.unidad.nombre }}</td>
+                                <td>{{ proceso.tecnico_inicia.get_full_name|default:proceso.tecnico_inicia.username }}</td>
+                                <td>{{ proceso.fecha_inicio|date:"d/m/Y H:i" }}</td>
+                                <td class="text-center">
+                                    <a href="{% url 'encargado-proceso-diesel' proceso.pk %}" class="btn btn-primary btn-sm" title="Continuar y finalizar este proceso">
+                                        <i class="fas fa-play-circle"></i> Finalizar Proceso
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-success text-center" role="alert">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <h5 class="alert-heading">¡Excelente!</h5>
+                    <p>No hay procesos pendientes de finalizar en este momento.</p>
+                </div>
+            {% endif %}
+        </div>
+        <div class="card-footer text-end">
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver al Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

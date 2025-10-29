@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1 text-gray-800">Listado de {{ titulo }}</h1>
+            <p class="text-muted mb-0">Gestión y administración de registros</p>
+        </div>
+        {% if url_crear %}
+        <a href="{% url url_crear %}" class="btn btn-primary shadow-sm">
+            <i class="fas fa-plus-circle me-2"></i>Añadir Nuevo
+        </a>
+        {% endif %}
+    </div>
+
+    {% if titulo == 'Cargas de Diésel' or titulo == 'Cargas de Aceite' or titulo == 'Cargas de Urea' or titulo == 'Registros de Checklist' or titulo == 'Inspecciones de Llantas' %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-filter me-2"></i>Filtros de Búsqueda</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" action="">
+                <div class="row g-3 align-items-end">
+                    <div class="col-lg-4 col-md-12"><label for="id_unidad" class="form-label small">Buscar por unidad:</label><select id="id_unidad" name="unidad" class="form-control select2-ajax-unidades">{% if selected_unidad %}<option value="{{ selected_unidad.pk }}" selected>{{ selected_unidad.nombre }}</option>{% endif %}</select></div>
+                    {% if titulo == 'Registros de Checklist' %}<div class="col-lg-3 col-md-12"><label for="id_tecnico" class="form-label small">Buscar por técnico:</label><select id="id_tecnico" name="tecnico" class="form-control select2-ajax-tecnicos">{% if selected_tecnico %}<option value="{{ selected_tecnico.pk }}" selected>{{ selected_tecnico.get_full_name|default:selected_tecnico.username }}</option>{% endif %}</select></div>{% endif %}
+                    <div class="col-lg-3 col-md-6"><label for="start_date" class="form-label small">Fecha de inicio:</label><input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}"></div>
+                    <div class="col-lg-3 col-md-6"><label for="end_date" class="form-label small">Fecha de fin:</label><input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}"></div>
+                    <div class="col-lg-2 col-md-12 mt-3 mt-lg-0"><div class="d-grid d-lg-flex justify-content-lg-end"><a href="{{ request.path }}" class="btn btn-outline-secondary me-lg-2 mb-2 mb-lg-0">Limpiar</a><button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Buscar</button></div></div>
+                </div>
+            </form>
+            {% if show_general_export_button %}
+            <div class="row mt-3">
+                <div class="col-12 col-md-auto">
+                    {# Construimos la URL con todos los filtros activos #}
+                    <a href="{% url export_url_name %}?start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&unidad={{ selected_unidad.pk|default:'' }}&tecnico={{ selected_tecnico.pk|default:'' }}&tipo_suministro={{ selected_tipo_suministro|default:'' }}" class="btn btn-success w-100">
+                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% if titulo == 'Unidades' %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-filter me-2"></i>Filtros de Búsqueda</h6></div>
+        <div class="card-body">
+            <form method="get" action="">
+                <div class="row g-3 align-items-end">
+                    <div class="col-lg-6 col-md-12"><label for="search_query" class="form-label small">Buscar por nombre:</label><input type="text" id="search_query" class="form-control" name="q" placeholder="Buscar por nombre o alias..." value="{{ search_query }}"></div><div class="col-lg-4 col-md-12"><label for="tipo_unidad" class="form-label small">Filtrar por tipo:</label><select id="tipo_unidad" name="tipo_unidad" class="form-select"><option value="">-- Todos los Tipos --</option><option value="S" {% if selected_tipo == 'S' %}selected{% endif %}>Seca</option><option value="R" {% if selected_tipo == 'R' %}selected{% endif %}>Refrigerada</option><option value="A" {% if selected_tipo == 'A' %}selected{% endif %}>Refrigerada/Seca</option></select></div><div class="col-lg-2 col-md-12 text-end"><div class="d-flex justify-content-end"><a href="{% url 'unidad-list' %}" class="btn btn-outline-secondary me-2">Limpiar</a><button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Buscar</button></div></div></div></form>
+
+            {% if show_general_export_button %}
+            <div class="row mt-3">
+                <div class="col-12 col-md-auto">
+                    <a href="{% url export_url_name %}?q={{ search_query|default:'' }}&tipo_unidad={{ selected_tipo|default:'' }}" class="btn btn-success w-100">
+                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% if titulo == 'Compras de Suministros' %}
+    <div class="card shadow mb-4">
+        <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-filter me-2"></i>Filtros de Búsqueda</h6></div>
+        <div class="card-body"><form method="get" action=""><div class="row g-3 align-items-end"><div class="col-lg-4 col-md-12"><label for="tipo_suministro" class="form-label small">Filtrar por suministro:</label><select id="tipo_suministro" name="tipo_suministro" class="form-select"><option value="">-- Todos los Suministros --</option>{% for value, display in tipos_suministro %}<option value="{{ value }}" {% if selected_tipo_suministro == value %}selected{% endif %}>{{ display }}</option>{% endfor %}</select></div><div class="col-lg-3 col-md-6"><label for="start_date" class="form-label small">Fecha de inicio:</label><input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}"></div><div class="col-lg-3 col-md-6"><label for="end_date" class="form-label small">Fecha de fin:</label><input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}"></div><div class="col-lg-2 col-md-12 mt-3 mt-lg-0"><div class="d-grid d-lg-flex justify-content-lg-end"><a href="{{ request.path }}" class="btn btn-outline-secondary me-lg-2 mb-2 mb-lg-0">Limpiar</a><button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Buscar</button></div></div></div></form>
+            {% if show_general_export_button %}
+            <div class="row mt-3">
+                <div class="col-12 col-md-auto">
+                    <a href="{% url export_url_name %}?start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}&tipo_suministro={{ selected_tipo_suministro|default:'' }}" class="btn btn-success w-100">
+                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Registros Encontrados</h6>
+            <span class="badge bg-primary rounded-pill">{{ page_obj.paginator.count }} registros</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            {% for header in headers %}
+                                <th class="{% if forloop.first %}ps-4{% endif %} {% if forloop.last %}pe-4{% endif %}">{{ header }}</th>
+                            {% endfor %}
+                            <th class="text-end pe-4">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for object in object_list %}
+                            {% if titulo == 'Unidades' %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-gray-700">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-truck text-primary me-3 fa-lg"></i>
+                                            <div>
+                                                <a href="{% url 'unidad-detail' object.pk %}" class="text-decoration-none fw-bold text-dark">{{ object.nombre }}</a>
+                                                <small class="d-block text-muted">{{ object.marca|default:'N/A' }} / {{ object.modelo|default:'N/A' }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ object.marca|default:'N/A' }} / {{ object.modelo|default:'N/A' }}</td>
+                                    <td>{{ object.placas|default:"N/A" }}</td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ object.km_actual|intcomma }} km</div>
+                                        <small class="text-muted">VIN: {{ object.vin|default:"N/A" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if object.tipo == 'R' %}
+                                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="fas fa-snowflake me-1"></i>Refrigerada</span>
+                                        {% elif object.tipo == 'A' %}
+                                            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle"><i class="fas fa-temperature-low me-1"></i>Refrigerada/Seca</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle"><i class="fas fa-box me-1"></i>Seca</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'unidad-detail' object.pk %}" class="btn btn-outline-primary" title="Ver detalles"><i class="fas fa-eye"></i></a>
+                                            <a href="{% url 'unidad-update' object.pk %}" class="btn btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a>
+                                            <a href="{% url 'unidad-delete' object.pk %}" class="btn btn-outline-danger" title="Eliminar"><i class="fas fa-trash"></i></a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% elif titulo == 'Operadores' %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-gray-700">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                    <td><div class="d-flex align-items-center"><i class="fas fa-user-tie text-primary me-3 fa-lg"></i><div><a href="{% url 'operador-detail' object.pk %}" class="text-decoration-none fw-bold text-dark">{{ object.nombre }} {{ object.apellido }}</a></div></div></td>
+                                    <td>{% if object.telefono %}<a href="tel:{{ object.telefono }}" class="text-decoration-none"><i class="fas fa-phone text-muted me-1"></i>{{ object.telefono }}</a>{% else %}<span class="text-muted">N/A</span>{% endif %}</td>
+                                    <td class="text-end pe-4"><div class="btn-group btn-group-sm"><a href="{% url 'operador-detail' object.pk %}" class="btn btn-outline-primary" title="Ver detalles"><i class="fas fa-eye"></i></a><a href="{% url 'operador-update' object.pk %}" class="btn btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a><a href="{% url 'operador-delete' object.pk %}" class="btn btn-outline-danger" title="Eliminar"><i class="fas fa-trash"></i></a></div></td>
+                                </tr>
+                            
+                            {% elif titulo == 'Cargas de Diésel' %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-gray-700">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                    <td><div class="d-flex align-items-center"><i class="fas fa-truck text-muted me-2"></i>{{ object.unidad }}</div></td>
+                                    <td><div class="fw-semibold">{{ object.fecha|date:"d M, Y" }}</div><small class="text-muted">{{ object.fecha|time:"P" }}</small></td>
+                                    <td><span class="fw-bold text-dark">{{ object.lts_diesel|floatformat:2|intcomma }} L</span></td>
+                                    <td><span class="text-info">{{ object.lts_thermo|floatformat:2|default:"0.00"|intcomma }} L</span></td>
+                                    <td>{% with total_consumido=object.lts_diesel|add:object.lts_thermo|default:object.lts_diesel %}<span class="badge bg-primary rounded-pill fs-6">{{ total_consumido|floatformat:2|intcomma }} L</span>{% endwith %}</td>
+                                    <td><span class="fw-bold text-success">${{ object.costo|floatformat:2|intcomma|default:"--" }}</span></td>
+                                    
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group btn-group-sm">
+                                            
+                                            {% if object.procesocarga.checklist.foto_odometro and object.procesocarga.checklist.foto_odometro.url %}
+                                            <button type="button" class="btn btn-outline-primary" title="Ver Foto Odómetro"
+                                                    data-bs-toggle="modal" data-bs-target="#image-viewer-modal"
+                                                    data-full-src="{{ object.procesocarga.checklist.foto_odometro.url }}">
+                                                <i class="fas fa-camera"></i>
+                                            </button>
+                                            {% endif %}
+                                            
+                                            {% if object.procesocarga.checklist.foto_thermo_hrs and object.procesocarga.checklist.foto_thermo_hrs.url %}
+                                            <button type="button" class="btn btn-outline-info" title="Ver Foto Horas Thermo"
+                                                    data-bs-toggle="modal" data-bs-target="#image-viewer-modal"
+                                                    data-full-src="{{ object.procesocarga.checklist.foto_thermo_hrs.url }}">
+                                                <i class="fas fa-clock"></i>
+                                            </button>
+                                            {% endif %}
+                                            
+                                            {% if object.procesocarga.checklist.foto_sticker and object.procesocarga.checklist.foto_sticker.url %}
+                                            <button type="button" class="btn btn-outline-secondary" title="Ver Foto Sticker"
+                                                    data-bs-toggle="modal" data-bs-target="#image-viewer-modal"
+                                                    data-full-src="{{ object.procesocarga.checklist.foto_sticker.url }}">
+                                                <i class="fas fa-sticky-note"></i>
+                                            </button>
+                                            {% endif %}
+
+                                            {% if object.foto_motor and object.foto_motor.url %}
+                                            <button type="button" class="btn btn-outline-dark" title="Ver Foto Bomba Motor"
+                                                    data-bs-toggle="modal" data-bs-target="#image-viewer-modal"
+                                                    data-full-src="{{ object.foto_motor.url }}">
+                                                <i class="fas fa-tachometer-alt"></i>
+                                            </button>
+                                            {% endif %}
+                                            
+                                            {% if object.foto_thermo and object.foto_thermo.url %}
+                                            <button type="button" class="btn btn-outline-dark" title="Ver Foto Bomba Thermo"
+                                                    data-bs-toggle="modal" data-bs-target="#image-viewer-modal"
+                                                    data-full-src="{{ object.foto_thermo.url }}">
+                                                <i class="fas fa-snowflake"></i>
+                                            </button>
+                                            {% endif %}
+
+                                            <a href="{% url 'cargadiesel-update' object.pk %}" class="btn btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a>
+                                            <a href="{% url 'cargadiesel-delete' object.pk %}" class="btn btn-outline-danger" title="Eliminar"><i class="fas fa-trash"></i></a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% elif titulo == 'Cargas de Aceite' %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-gray-700">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                    <td><div class="d-flex align-items-center"><i class="fas fa-truck text-muted me-2"></i>{{ object.unidad }}</div></td>
+                                    <td><div class="fw-semibold">{{ object.fecha|date:"d M, Y" }}</div><small class="text-muted">{{ object.fecha|time:"P" }}</small></td>
+                                    <td><span class="fw-bold text-primary">{{ object.cantidad|floatformat:2 }} L</span></td>
+                                    <td><span class="text-muted fst-italic">{{ object.motivo|truncatechars:40 }}</span></td>
+                                    <td class="text-end pe-4"><div class="btn-group btn-group-sm"><a href="{% url 'cargaaceite-update' object.pk %}" class="btn btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a><a href="{% url 'cargaaceite-delete' object.pk %}" class="btn btn-outline-danger" title="Eliminar"><i class="fas fa-trash"></i></a></div></td>
+                                </tr>
+                            
+                            {% elif titulo == 'Cargas de Urea' %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-gray-700">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                    <td><div class="d-flex align-items-center"><i class="fas fa-truck text-muted me-2"></i>{{ object.unidad }}</div></td>
+                                    <td><div class="fw-semibold">{{ object.fecha|date:"d M, Y" }}</div><small class="text-muted">{{ object.fecha|time:"P" }}</small></td>
+                                    <td><span class="fw-bold text-primary">{{ object.litros_cargados|floatformat:2 }} L</span></td>
+                                    <td><span class="fw-bold text-success">${{ object.costo|floatformat:2|intcomma|default:"--" }}</span></td>
+                                    <td class="text-end pe-4">
+                                        <div class="btn-group btn-group-sm">
+                                            {% if object.foto_urea and object.foto_urea.url %}
+                                            <button type="button" class="btn btn-outline-info" title="Ver Foto Bomba Urea"
+                                                    data-bs-toggle="modal" data-bs-target="#image-viewer-modal"
+                                                    data-full-src="{{ object.foto_urea.url }}">
+                                                <i class="fas fa-gas-pump"></i>
+                                            </button>
+                                            {% endif %}
+                                            
+                                            <a href="{% url 'cargaurea-update' object.pk %}" class="btn btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a>
+                                            <a href="{% url 'cargaurea-delete' object.pk %}" class="btn btn-outline-danger" title="Eliminar"><i class="fas fa-trash"></i></a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% elif titulo == 'Compras de Suministros' %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-gray-700">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                    <td><div class="fw-semibold">{{ object.fecha_compra|date:"d M, Y" }}</div><small class="text-muted">{{ object.fecha_compra|time:"P" }}</small></td>
+                                    <td><div class="d-flex align-items-center"><i class="fas fa-store text-muted me-2"></i>{{ object.proveedor }}</div></td>
+                                    <td>
+                                        {% if object.tipo_suministro == 'DIESEL' %}<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"><i class="fas fa-fire me-1"></i>{{ object.get_tipo_suministro_display }}</span>
+                                        {% elif object.tipo_suministro == 'UREA' %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="fas fa-flask me-1"></i>{{ object.get_tipo_suministro_display }}</span>
+                                        {% elif object.tipo_suministro == 'ACEITE' %}<span class="badge bg-dark-subtle text-dark-emphasis border border-dark-subtle"><i class="fas fa-oil-can me-1"></i>{{ object.get_tipo_suministro_display }}</span>
+                                        {% else %}<span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">{{ object.get_tipo_suministro_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="fw-bold text-success">${{ object.precio|floatformat:2|intcomma }}</span></td>
+                                    <td class="text-end pe-4"><div class="btn-group btn-group-sm"><a href="{% url 'comprasuministro-update' object.pk %}" class="btn btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a><a href="{% url 'comprasuministro-delete' object.pk %}" class="btn btn-outline-danger" title="Eliminar"><i class="fas fa-trash"></i></a></div></td>
+                                </tr>
+                            {% elif 'Checklist' in titulo or 'Llantas' in titulo %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-gray-700">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                    <td><div class="d-flex align-items-center"><i class="fas fa-truck text-muted me-2"></i>{{ object.unidad }}</div></td>
+                                    {% if titulo == 'Inspecciones de Llantas' %}<td><span class="fw-bold">{{ object.km|intcomma }} km</span></td>{% else %}<td>{{ object.operador }}</td>{% endif %}
+                                    <td><div class="d-flex align-items-center"><i class="fas fa-user-cog text-muted me-2"></i>{{ object.tecnico.get_full_name|default:object.tecnico.username }}</div></td>
+                                    <td><div class="fw-semibold">{{ object.fecha|date:"d M, Y" }}</div><small class="text-muted">{{ object.fecha|time:"P" }}</small></td>
+                                    <td class="text-end pe-4"><div class="btn-group btn-group-sm"><a href="{% url url_detail_name object.pk %}" class="btn btn-outline-primary" title="Ver detalles"><i class="fas fa-eye"></i></a><a href="{% url url_update_name object.pk %}" class="btn btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a><a href="{% url url_delete_name object.pk %}" class="btn btn-outline-danger" title="Eliminar"><i class="fas fa-trash"></i></a></div></td>
+                                </tr>
+                            {% endif %}
+                        {% empty %}
+                            <tr>
+                                <td colspan="{{ headers|length|add:1 }}" class="text-center py-5">
+                                    <div class="text-center py-5"><i class="fas fa-inbox fa-3x text-muted mb-3"></i><h4 class="text-muted">No hay registros para mostrar</h4>{% if request.GET %}<p class="text-muted">No se encontraron registros que coincidan con los filtros aplicados.</p><a href="{{ request.path }}" class="btn btn-secondary mt-2"><i class="fas fa-sync-alt me-2"></i>Limpiar filtros</a>{% elif url_crear %}<a href="{% url url_crear %}" class="btn btn-primary mt-2"><i class="fas fa-plus-circle me-2"></i>Crear primer registro</a>{% endif %}</div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        {% if is_paginated %}
+        <div class="card-footer bg-light border-0">
+            <div class="d-flex justify-content-between align-items-center"><div class="text-muted small">Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ paginator.count }} registros</div><nav aria-label="Page navigation"><ul class="pagination justify-content-center mb-0">{% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" aria-label="Anterior">&laquo;</a></li>{% else %}<li class="page-item disabled"><a class="page-link" href="#" tabindex="-1" aria-disabled="true">&laquo;</a></li>{% endif %}{% for i in paginator.page_range %}{% if page_obj.number == i %}<li class="page-item active" aria-current="page"><a class="page-link" href="#">{{ i }}</a></li>{% else %}<li class="page-item"><a class="page-link" href="?page={{ i }}&{{ request.GET.urlencode }}">{{ i }}</a></li>{% endif %}{% endfor %}{% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" aria-label="Siguiente">&raquo;</a></li>{% else %}<li class="page-item disabled"><a class="page-link" href="#" tabindex="-1" aria-disabled="true">&raquo;</a></li>{% endif %}</ul></nav></div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="image-viewer-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Visor de Evidencia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-0">
+                <img id="modal-image-content" src="" class="img-fluid w-100" alt="Evidencia en tamaño completo" style="max-height: 85vh; object-fit: contain;">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    {% if titulo == 'Registros de Checklist' or 'Cargas' in titulo or 'Inspecciones de Llantas' in titulo %}
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <script>
+        $(document).ready(function() {
+            $('.select2-ajax-unidades').select2({
+                placeholder: 'Buscar unidad...', allowClear: true,
+                ajax: { url: "{% url 'api-search-unidades' %}", dataType: 'json', delay: 250, data: p => ({ term: p.term }), processResults: d => ({ results: d.results }), cache: true }
+            });
+            $('.select2-ajax-tecnicos').select2({
+                placeholder: 'Buscar técnico...', allowClear: true,
+                ajax: { url: "{% url 'api-search-tecnicos' %}", dataType: 'json', delay: 250, data: p => ({ term: p.term }), processResults: d => ({ results: d.results }), cache: true }
+            });
+        });
+        </script>
+    {% endif %}
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const imageViewerModalEl = document.getElementById('image-viewer-modal');
+        if (imageViewerModalEl) {
+            imageViewerModalEl.addEventListener('show.bs.modal', function (event) {
+                const trigger = event.relatedTarget;
+                const fullSrc = trigger && trigger.dataset ? trigger.dataset.fullSrc : '';
+                const modalImage = document.getElementById('modal-image-content');
+                if (modalImage) {
+                    modalImage.src = fullSrc || '';
+                }
+            });
+
+            imageViewerModalEl.addEventListener('hidden.bs.modal', function () {
+                const modalImage = document.getElementById('modal-image-content');
+                if (modalImage) modalImage.src = '';
+            });
+        }
+    });
+    </script>
+{% endblock %}

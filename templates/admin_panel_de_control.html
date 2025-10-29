@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {{ titulo }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">{{ titulo }}</h2>
+
+    <!-- Procesos Pendientes de Finalizar -->
+    <div class="card shadow mb-5">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-gas-pump me-2"></i> Procesos Pendientes de Finalizar (Falta Diésel/Urea)</h5>
+        </div>
+        <div class="card-body">
+            {% if procesos_pendientes_finalizar %}
+                <p>Estos procesos fueron completados por un técnico y están listos para que se registren las cargas de combustible.</p>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Unidad</th>
+                                <th class="d-none d-md-table-cell">Iniciado por</th>
+                                <th>Fecha de Inicio</th>
+                                <th class="text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for proceso in procesos_pendientes_finalizar %}
+                            <tr>
+                                <td>
+                                    <div class="d-md-none">
+                                        <div class="fw-bold">{{ proceso.unidad.nombre }}</div>
+                                        <small class="text-muted">
+                                            Por: {{ proceso.tecnico_inicia.get_full_name|default:proceso.tecnico_inicia.username }}
+                                        </small>
+                                    </div>
+                                    <span class="d-none d-md-inline">{{ proceso.unidad.nombre }}</span>
+                                </td>
+                                <td class="d-none d-md-table-cell">{{ proceso.tecnico_inicia.get_full_name|default:proceso.tecnico_inicia.username }}</td>
+                                <td>{{ proceso.fecha_inicio|date:"d/m/Y H:i" }}</td>
+                                <td class="text-center">
+                                    <a href="{% url 'encargado-proceso-diesel' proceso.pk %}" class="btn btn-primary btn-sm" title="Continuar y finalizar este proceso">
+                                        <i class="fas fa-play-circle"></i>
+                                        <span class="d-none d-sm-inline"> Finalizar Proceso</span>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-success text-center">
+                    <i class="fas fa-check-circle me-2"></i> No hay procesos esperando ser finalizados.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Procesos Pendientes de Inspección de Llantas -->
+    <div class="card shadow">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0"><i class="fas fa-dot-circle me-2"></i> Procesos Pendientes de Inspección de Llantas</h5>
+        </div>
+        <div class="card-body">
+            {% if procesos_pendientes_llantas %}
+                <p>Estos checklists fueron creados, pero el proceso se abandonó antes de completar la inspección de llantas. Como administrador, puedes terminar el proceso, ver el detalle o eliminar el registro.</p>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Unidad</th>
+                                <th class="d-none d-md-table-cell">Realizado por</th>
+                                <th>Fecha del Checklist</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for checklist in procesos_pendientes_llantas %}
+                            <tr>
+                                <td>
+                                    <div class="d-md-none">
+                                        <div class="fw-bold">{{ checklist.unidad.nombre }}</div>
+                                        <small class="text-muted">
+                                            Por: {{ checklist.tecnico.get_full_name|default:checklist.tecnico.username }}
+                                        </small>
+                                    </div>
+                                    <span class="d-none d-md-inline">{{ checklist.unidad.nombre }}</span>
+                                </td>
+                                <td class="d-none d-md-table-cell">{{ checklist.tecnico.get_full_name|default:checklist.tecnico.username }}</td>
+                                <td>{{ checklist.fecha|date:"d/m/Y H:i" }}</td>
+                                <td class="text-center">
+                                    <!-- Versión para pantallas grandes -->
+                                    <div class="d-none d-sm-block">
+                                        <a href="{% url 'admin-continuar-proceso' checklist.pk %}" class="btn btn-success btn-sm" title="Continuar y terminar este proceso">
+                                            <i class="fas fa-play-circle"></i> Terminar
+                                        </a>
+                                        <a href="{% url 'checklist-detail' checklist.pk %}" class="btn btn-info btn-sm" title="Ver detalle del checklist">
+                                            <i class="fas fa-eye"></i> Ver
+                                        </a>
+                                        <a href="{% url 'checklist-delete' checklist.pk %}" class="btn btn-danger btn-sm" title="Eliminar este checklist incompleto">
+                                            <i class="fas fa-trash"></i> Eliminar
+                                        </a>
+                                    </div>
+                                    
+                                    <!-- Versión para móviles - Dropdown -->
+                                    <div class="dropdown d-sm-none">
+                                        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="dropdownMenuButton{{ checklist.pk }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Acciones
+                                        </button>
+                                        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton{{ checklist.pk }}">
+                                            <li>
+                                                <a class="dropdown-item text-success" href="{% url 'admin-continuar-proceso' checklist.pk %}">
+                                                    <i class="fas fa-play-circle me-2"></i> Terminar Proceso
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item text-info" href="{% url 'checklist-detail' checklist.pk %}">
+                                                    <i class="fas fa-eye me-2"></i> Ver Detalle
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="{% url 'checklist-delete' checklist.pk %}">
+                                                    <i class="fas fa-trash me-2"></i> Eliminar
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-success text-center">
+                    <i class="fas fa-check-circle me-2"></i> No hay procesos pendientes de inspección de llantas.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

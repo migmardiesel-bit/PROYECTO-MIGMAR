@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h4 class="m-0 font-weight-bold text-primary">Procesos Pendientes de Carga</h4>
+            
+            <a href="{% url 'tecnico-seleccionar-unidad' %}" class="btn btn-sm btn-success">
+                <i class="fas fa-plus me-2"></i> Iniciar Nuevo Proceso
+            </a>
+        </div>
+        <div class="card-body">
+            {% if procesos_pendientes %}
+                <!-- Vista de tabla para pantallas medianas y grandes -->
+                <div class="table-responsive d-none d-md-block">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Unidad</th>
+                                <th>Iniciado Por</th>
+                                <th>Fecha de Inicio</th>
+                                <th class="text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for proceso in procesos_pendientes %}
+                            <tr>
+                                <td class="align-middle fw-bold">{{ proceso.unidad.nombre }}</td>
+                                <td class="align-middle">{{ proceso.tecnico_inicia.get_full_name|default:proceso.tecnico_inicia.username }}</td>
+                                <td class="align-middle">{{ proceso.fecha_inicio|date:"d M Y, H:i" }}</td>
+                                <td class="text-center">
+                                    <a href="{% url 'encargado-proceso-diesel' proceso.pk %}" class="btn btn-primary">
+                                        Continuar Proceso <i class="fas fa-arrow-right ms-2"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Vista de tarjetas para pantallas pequeñas -->
+                <div class="d-md-none">
+                    {% for proceso in procesos_pendientes %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold">{{ proceso.unidad.nombre }}</h5>
+                            <p class="card-text">
+                                <strong>Iniciado Por:</strong> {{ proceso.tecnico_inicia.get_full_name|default:proceso.tecnico_inicia.username }}<br>
+                                <strong>Fecha de Inicio:</strong> {{ proceso.fecha_inicio|date:"d M Y, H:i" }}
+                            </p>
+                            <div class="text-center">
+                                <a href="{% url 'encargado-proceso-diesel' proceso.pk %}" class="btn btn-primary">
+                                    Continuar Proceso <i class="fas fa-arrow-right ms-2"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+            <div class="alert alert-success text-center" role="alert">
+                <h5 class="alert-heading">¡Todo al día! ✅</h5>
+                <p class="mb-0">No hay procesos pendientes de carga en este momento.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

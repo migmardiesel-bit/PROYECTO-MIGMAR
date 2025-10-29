@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Transporte</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #dbeafe;
+            --secondary: #f59e0b;
+            --secondary-dark: #d97706;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --darker: #0f172a;
+            --light: #f8fafc;
+            --lighter: #ffffff;
+            --gray: #64748b;
+            --gray-light: #e2e8f0;
+            --transition: all 0.3s ease;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --border-radius: 10px;
+            --border-radius-lg: 15px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            color: #334155;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* ===== NAVBAR ===== */
+        .navbar {
+            background: linear-gradient(135deg, var(--dark) 0%, var(--darker) 100%);
+            box-shadow: var(--shadow-xl);
+            padding: 0.5rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.3rem 0;
+            letter-spacing: -0.5px;
+        }
+        
+        .navbar-brand .logo-img {
+            height: 50px;
+            width: auto;
+            border-radius: 8px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15), 0 4px 8px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3px;
+        }
+        
+        .navbar-brand .logo-img:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 0 3px var(--secondary), 0 6px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        .navbar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            margin: 0 0.1rem;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        
+        .navbar-nav .nav-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-1px);
+        }
+        
+        .navbar-nav .nav-link.active {
+            color: white;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+        }
+        
+        .navbar-nav .nav-link.active:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 1rem;
+            right: 1rem;
+            height: 2px;
+            background: var(--secondary);
+            border-radius: 2px;
+        }
+        
+        .dropdown-menu {
+            background: var(--lighter);
+            border: none;
+            box-shadow: var(--shadow-xl);
+            border-radius: var(--border-radius);
+            padding: 0.5rem 0;
+            margin-top: 0.5rem;
+            border: 1px solid var(--gray-light);
+            min-width: 200px;
+        }
+        
+        .dropdown-item {
+            padding: 0.6rem 1.2rem;
+            font-weight: 500;
+            color: var(--dark);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 3px solid transparent;
+        }
+        
+        .dropdown-item:hover {
+            background-color: var(--primary-light);
+            color: var(--primary-dark);
+            border-left-color: var(--primary);
+            transform: translateX(3px);
+        }
+        
+        .dropdown-item i {
+            width: 16px;
+            text-align: center;
+            color: var(--gray);
+        }
+        
+        .dropdown-item:hover i {
+            color: var(--primary);
+        }
+        
+        .navbar-text {
+            color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+        
+        .navbar-text a, .navbar-text button.btn-link {
+            color: var(--secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .navbar-text a:hover, .navbar-text button.btn-link:hover {
+            color: white;
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
+        
+        .user-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.12);
+            padding: 5px 10px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: var(--transition);
+        }
+        
+        .user-badge:hover {
+            background: rgba(255, 255, 255, 0.18);
+            transform: translateY(-1px);
+        }
+        
+        .user-badge i {
+            margin-right: 6px;
+            color: var(--secondary);
+        }
+        
+        .badge {
+            font-size: 0.65rem;
+            padding: 3px 6px;
+        }
+        
+        /* ===== MAIN CONTENT ===== */
+        main {
+            flex: 1;
+            padding: 1.5rem 0;
+        }
+        
+        .container-fluid {
+             max-width: 1600px;
+        }
+        
+        /* ===== FOOTER ===== */
+        footer {
+            background: linear-gradient(135deg, var(--dark) 0%, var(--darker) 100%);
+            color: rgba(255, 255, 255, 0.75);
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            margin-left: 1.2rem;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .footer-links a:hover {
+            color: white;
+            transform: translateY(-1px);
+        }
+        
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 992px) {
+            .navbar-nav .nav-link {
+                margin: 0.1rem 0;
+                padding: 0.7rem 1rem;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            
+            .footer-links a {
+                margin: 0 0.7rem;
+            }
+            
+            .dropdown-menu {
+                border-radius: 0 0 var(--border-radius) var(--border-radius);
+                margin-top: 0;
+                box-shadow: none;
+                border: none;
+                border-top: 1px solid var(--gray-light);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 1.1rem;
+            }
+            
+            .navbar-brand .logo-img {
+                height: 40px;
+            }
+            
+            .user-badge {
+                font-size: 0.8rem;
+                padding: 4px 8px;
+            }
+            
+            .navbar-text {
+                flex-direction: column;
+                gap: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .footer-links {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .footer-links a {
+                margin: 0;
+            }
+            
+            main {
+                padding: 1rem 0;
+            }
+            
+            .container-fluid {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .navbar-brand {
+                font-size: 1rem;
+            }
+            
+            .navbar-brand .logo-img {
+                height: 35px;
+            }
+            
+            .navbar-nav .nav-link {
+                font-size: 0.9rem;
+            }
+            
+            .dropdown-item {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+            
+            footer {
+                padding: 1rem 0;
+                font-size: 0.8rem;
+            }
+        }
+        
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card, .alert {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        /* ===== Select2 Theme Fix ===== */
+        .select2-container--bootstrap-5 .select2-selection {
+            border-radius: 0.375rem !important;
+            min-height: 38px;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    {% load static %}
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <img src="{% static 'flota/images/logo.png' %}" alt="Logo Transporte" class="logo-img">
+                Gestión Transporte
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    {% if user.is_authenticated %}
+                        {% with user_groups=user.groups.all|join:',' %}
+                            {% if 'Administrador' in user_groups %}
+                                <li class="nav-item">
+                                    <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
+                                        <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                                    </a>
+                                </li>
+                                
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-cogs me-1"></i> Gestionar
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="{% url 'unidad-list' %}"><i class="fas fa-truck"></i> Unidades</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'operador-list' %}"><i class="fas fa-user-tie"></i> Operadores</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'entrega-suministros-list' %}"><i class="fas fa-ticket-alt"></i> Entrega Cinchos/Tarjetas</a></li>
+                                    </ul>
+                                </li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-calendar-check me-1"></i> Revisiones
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="{% url 'asignar-revision' %}"><i class="fas fa-plus"></i> Asignar Revisiones</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'monitor-revisiones' %}"><i class="fas fa-desktop"></i> Monitor Diario</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="{% url 'corregir-checklist-mal' %}">
+                                            <i class="fas fa-exclamation-triangle text-danger"></i> Corregir Items (MALO)
+                                        </a></li>
+                                    </ul>
+                                </li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-tasks me-1"></i> Inspecciones
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="{% url 'checklist-list' %}"><i class="fas fa-clipboard-check"></i> Checklists</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'llantas-list' %}"><i class="fas fa-dot-circle"></i> Llantas</a></li>
+                                    </ul>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'panel-de-control' in request.path %}active{% endif %}" href="{% url 'admin-panel-de-control' %}">
+                                        <i class="fas fa-clipboard-list me-1"></i> Panel de Control
+                                    </a>
+                                </li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-gas-pump me-1"></i> Cargas
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="{% url 'cargadiesel-list' %}"><i class="fas fa-fire"></i> Cargas Diésel</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'cargaaceite-list' %}"><i class="fas fa-oil-can"></i> Cargas Aceite</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'cargaurea-list' %}"><i class="fas fa-flask"></i> Cargas Urea</a></li>
+                                    </ul>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'comprasuministro' in request.path %}active{% endif %}" href="{% url 'comprasuministro-list' %}">
+                                        <i class="fas fa-shopping-cart me-1"></i> Compras
+                                    </a>
+                                </li>
+
+                            {% elif 'Encargado' in user_groups %}
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'encargado-pendientes-list' in request.path %}active{% endif %}" href="{% url 'encargado-pendientes-list' %}">
+                                        <i class="fas fa-hourglass-half me-1"></i> Finalizar Procesos
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'panel-de-control' in request.path %}active{% endif %}" href="{% url 'admin-panel-de-control' %}">
+                                        <i class="fas fa-clipboard-list me-1"></i> Panel de Control
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'tecnico-seleccionar-unidad' in request.path %}active{% endif %}" href="{% url 'tecnico-seleccionar-unidad' %}">
+                                        <i class="fas fa-plus-circle me-1"></i> Iniciar Proceso
+                                    </a>
+                                </li>
+                                
+                            {% elif 'Tecnico' in user_groups %}
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'tecnico' in request.path %}active{% endif %}" href="{% url 'tecnico-seleccionar-unidad' %}">
+                                        <i class="fas fa-tools me-1"></i> Iniciar Proceso
+                                    </a>
+                                </li>
+                            {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </ul>
+
+                <span class="navbar-text">
+                    {% if user.is_authenticated %}
+                        <span class="user-badge">
+                            <i class="fas fa-user-circle"></i>
+                            {{ user.username }}
+                            {% if user.groups.all %}
+                                <span class="badge bg-secondary ms-1">{{ user.groups.all.0.name }}</span>
+                            {% endif %}
+                        </span>
+                        |
+                        <form action="{% url 'logout' %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link p-0" style="text-decoration: none; vertical-align: baseline;">
+                                <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
+                            </button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'login' %}"><i class="fas fa-sign-in-alt me-1"></i>Iniciar Sesión</a>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container-fluid mt-4">
+        {% if messages %}
+            <div class="row justify-content-center">
+                <div class="col-md-10 col-lg-8">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer mt-auto">
+        <div class="container-fluid">
+            <div class="footer-content">
+                <div class="copyright">
+                    &copy; {% now "Y" %} Sistema de Gestión de Transporte. Todos los derechos reservados.
+                </div>
+                <div class="footer-links">
+                    <a href="#"><i class="fas fa-question-circle me-1"></i> Ayuda</a>
+                    <a href="#"><i class="fas fa-shield-alt me-1"></i> Privacidad</a>
+                    <a href="#"><i class="fas fa-file-contract me-1"></i> Términos</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

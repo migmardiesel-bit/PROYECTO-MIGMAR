@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card shadow-lg border-0" style="border-radius: var(--border-radius-lg);">
+            <div class="card-header bg-danger text-white" style="border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0; padding: 1.25rem 1.5rem;">
+                <h4 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i> Confirmar Eliminación</h4>
+            </div>
+            <div class="card-body p-4 p-md-5 text-center">
+                <form method="post">
+                    {% csrf_token %}
+                    <p class="fs-5">
+                        ¿Estás seguro de que deseas eliminar el registro de entrega para 
+                        <strong>"{{ object.operador }}"</strong> del 
+                        <strong>{{ object.fecha_entrega|date:"d/m/Y" }}</strong>?
+                    </p>
+                    <p class="text-muted">Esta acción no se puede deshacer.</p>
+                    
+                    <hr class="my-4">
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-center">
+                        <a href="{% url 'entrega-suministros-list' %}" class="btn btn-outline-secondary me-md-2">
+                            <i class="fas fa-times me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt me-1"></i> Sí, Eliminar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

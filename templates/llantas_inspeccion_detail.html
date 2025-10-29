@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h4 mb-0">Detalle de Inspección de Llantas</h1>
+                <p class="text-muted mb-0">Unidad: <strong class="text-primary">{{ object.unidad.nombre }}</strong></p>
+            </div>
+            <a href="{% url 'llantas-list' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Volver a la lista
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4 p-3 bg-light rounded">
+                <div class="col-md-4">
+                    <strong>Fecha:</strong> {{ object.fecha|date:"d/m/Y H:i" }}
+                </div>
+                <div class="col-md-4">
+                    <strong>Kilometraje:</strong> {{ object.km|intcomma }} km
+                </div>
+                <div class="col-md-4">
+                    <strong>Técnico:</strong> {{ object.tecnico.get_full_name|default:object.tecnico.username }}
+                </div>
+            </div>
+
+            <h5 class="card-title">Llantas Registradas</h5>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Posición</th>
+                            <th>MM</th>
+                            <th>Marca</th>
+                            <th>Modelo</th>
+                            <th>Medida</th>
+                            <th>Presión (PSI)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for detalle in object.detalles_llanta.all %}
+                        <tr>
+                            <td>{{ detalle.posicion }}</td>
+                            <td>{{ detalle.mm }}</td>
+                            <td>{{ detalle.marca }}</td>
+                            <td>{{ detalle.modelo }}</td>
+                            <td>{{ detalle.medida }}</td>
+                            <td>{{ detalle.presion }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No se registraron detalles de llantas en esta inspección.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-end">
+            <a href="{% url 'llantas-update' object.pk %}" class="btn btn-secondary">
+                <i class="fas fa-edit me-1"></i> Editar
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
