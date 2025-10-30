@@ -1,12 +1,19 @@
 # flota/alerts.py
 
 from django.conf import settings
-from django.core.mail import send_mail
+# --- IMPORT MODIFICADO ---
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.db.models import Sum
 from django.utils import timezone
 from datetime import timedelta
 from .models import CompraSuministro, CargaDiesel, CargaUrea, CargaAceite, AjusteInventario, AlertaInventario
 from twilio.rest import Client
+
+# --- NUEVOS IMPORTS ---
+from email.mime.image import MIMEImage
+from django.core.files.storage import default_storage # Para leer archivos de S3/local
+import os
+
 
 # --- La función para obtener inventario no cambia ---
 def get_inventory_levels():
@@ -139,76 +146,169 @@ def send_on_demand_status_report(user):
     return True
 
 # ======================================================================
-# INICIO DE LA FUNCIÓN MODIFICADA
+# INICIO DE LA FUNCIÓN REEMPLAZADA (CON IMÁGENES)
 # ======================================================================
 def send_refuel_notification(carga_diesel_instance):
     """
-    Envía una notificación informativa con el desglose de la carga de diésel
-    y el estado actual del inventario general.
+    Envía una notificación informativa por CORREO (con imágenes) y WhatsApp
+    con el desglose de la carga de diésel y el estado del inventario.
     """
+    
+    # --- 1. Obtener datos básicos ---
     unidad = carga_diesel_instance.unidad
     current_levels = get_inventory_levels()
-    total_liters = carga_diesel_instance.lts_diesel
-
-    # --- 1. Construir el desglose de la carga dinámicamente ---
-    
-    # Para el correo electrónico (más detallado)
-    email_charge_details = [f"  - Diésel (Motor): {carga_diesel_instance.lts_diesel:.2f} L"]
-    if carga_diesel_instance.lts_thermo and carga_diesel_instance.lts_thermo > 0:
-        email_charge_details.append(f"  - Diésel (Thermo): {carga_diesel_instance.lts_thermo:.2f} L")
-        total_liters += carga_diesel_instance.lts_thermo
-        email_charge_details.append(f"  - TOTAL CARGADO: {total_liters:.2f} L")
-    
-    # Para WhatsApp (más conciso)
-    whatsapp_charge_details = [f"  - Motor: {carga_diesel_instance.lts_diesel:.2f} L"]
-    if carga_diesel_instance.lts_thermo and carga_diesel_instance.lts_thermo > 0:
-        whatsapp_charge_details.append(f"  - Thermo: {carga_diesel_instance.lts_thermo:.2f} L")
-
-    # --- 2. Convertir la fecha a la zona horaria local ---
-    # Convierte la fecha UTC de la BD a la hora local (definida en settings.py)
     hora_local = timezone.localtime(carga_diesel_instance.fecha)
-    # Formatea la hora local
     fecha_formateada = hora_local.strftime('%d/%m/%Y %H:%M')
 
-    # --- 3. Construir cuerpos completos de los mensajes ---
-    email_subject = f"Notificación de Carga de Diésel - Unidad {unidad.nombre}"
-    email_body = (
-        f"Se ha registrado una nueva carga de combustible.\n\n"
-        f"  - Unidad: {unidad.nombre}\n"
-        f"  - Fecha y Hora: {fecha_formateada}\n\n"  # <-- USA LA FECHA CORREGIDA
-        f"DETALLE DE LA CARGA:\n"
-        f"{'\n'.join(email_charge_details)}\n\n"
-        "-------------------------------------\n"
-        "ESTADO ACTUAL DEL INVENTARIO GENERAL:\n"
-        "-------------------------------------\n"
-        f"  - Diésel: {current_levels.get('DIESEL', 0):.2f} Litros\n"
-        f"  - Urea:   {current_levels.get('UREA', 0):.2f} Litros\n"
-        f"  - Aceite: {current_levels.get('ACEITE', 0):.2f} Litros\n"
-    )
+    lts_motor = carga_diesel_instance.lts_diesel
+    lts_thermo = carga_diesel_instance.lts_thermo or 0
+    total_cargado = lts_motor + lts_thermo
 
-    whatsapp_body = (
-        f"⛽ *Notificación de Carga*\n\n"
-        f"▪️ *Unidad:* {unidad.nombre}\n"
-        f"▪️ *Fecha:* {fecha_formateada}\n" # <-- USA LA FECHA CORREGIDA
-        f"*Detalle de Carga:*\n"
-        f"{'\n'.join(whatsapp_charge_details)}\n\n"
-        f"📊 *Inventario Actual:*\n"
-        f"  - Diésel: {current_levels.get('DIESEL', 0):.2f} L\n"
-        f"  - Urea: {current_levels.get('UREA', 0):.2f} L\n"
-        f"  - Aceite: {current_levels.get('ACEITE', 0):.2f} L"
-    )
+    # --- 2. Preparar el contexto para los mensajes ---
+    context = {
+        'unidad_nombre': unidad.nombre,
+        'fecha_formateada': fecha_formateada,
+        'lts_motor': lts_motor,
+        'lts_thermo': lts_thermo,
+        'total_cargado': total_cargado,
+        'diesel_actual': current_levels.get('DIESEL', 0),
+        'urea_actual': current_levels.get('UREA', 0),
+        'aceite_actual': current_levels.get('ACEITE', 0),
+    }
 
+    # --- 3. Construir lista de imágenes y cuerpo HTML ---
+    
+    # (Usaremos un string simple, pero podrías usar un template de Django)
+    html_body = f"""
+    <h3>Notificación de Carga de Combustible</h3>
+    <p>Se ha registrado una nueva carga para la unidad: <strong>{context['unidad_nombre']}</strong></p>
+    <p><strong>Fecha y Hora:</strong> {context['fecha_formateada']}</p>
+    
+    <h4>Detalle de la Carga:</h4>
+    <ul>
+        <li>Diésel (Motor): {context['lts_motor']:.2f} L</li>
+    """
+    if context['lts_thermo'] > 0:
+        html_body += f"<li>Diésel (Thermo): {context['lts_thermo']:.2f} L</li>"
+        html_body += f"<li><strong>TOTAL CARGADO: {context['total_cargado']:.2f} L</strong></li>"
+    
+    html_body += "</ul><h4>Evidencia Fotográfica:</h4>"
+
+    # Lista de tuplas (Content-ID, campo_de_imagen)
+    imagenes_a_adjuntar = []
+    
+    # Intentar obtener fotos del checklist
+    try:
+        # El modelo ProcesoCarga tiene un OneToOne A la CargaDiesel,
+        # así que podemos acceder a él con .procesocarga
+        checklist = carga_diesel_instance.procesocarga.checklist
+        if checklist.foto_odometro:
+            imagenes_a_adjuntar.append(('foto_odometro', checklist.foto_odometro))
+            html_body += '<p><strong>Foto Odómetro:</strong><br/><img src="cid:foto_odometro" style="max-width: 300px; height: auto;"></p>'
+        
+        if checklist.foto_thermo_hrs:
+            imagenes_a_adjuntar.append(('foto_thermo_hrs', checklist.foto_thermo_hrs))
+            html_body += '<p><strong>Foto Horas Thermo:</strong><br/><img src="cid:foto_thermo_hrs" style="max-width: 300px; height: auto;"></p>'
+
+    except Exception as e:
+        print(f"NOTA: No se pudo obtener el checklist para la carga {carga_diesel_instance.pk}. Error: {e}")
+        html_body += "<p><em>(No se encontró un checklist asociado para las fotos del odómetro)</em></p>"
+
+    # Añadir fotos de la carga de diésel
+    if carga_diesel_instance.foto_motor:
+        imagenes_a_adjuntar.append(('foto_motor', carga_diesel_instance.foto_motor))
+        html_body += '<p><strong>Foto Bomba Motor:</strong><br/><img src="cid:foto_motor" style="max-width: 300px; height: auto;"></p>'
+
+    if carga_diesel_instance.foto_thermo:
+        imagenes_a_adjuntar.append(('foto_thermo', carga_diesel_instance.foto_thermo))
+        html_body += '<p><strong>Foto Bomba Thermo:</strong><br/><img src="cid:foto_thermo" style="max-width: 300px; height: auto;"></p>'
+    
+    # Añadir pie de página con inventario
+    html_body += f"""
+    <hr>
+    <h4>Estado Actual del Inventario General:</h4>
+    <ul>
+        <li>Diésel: {context['diesel_actual']:.2f} L</li>
+        <li>Urea: {context['urea_actual']:.2f} L</li>
+        <li>Aceite: {context['aceite_actual']:.2f} L</li>
+    </ul>
+    """
+    
     # --- 4. Enviar Correo Electrónico ---
+    email_subject = f"Notificación de Carga de Diésel - Unidad {unidad.nombre}"
     email_recipients = settings.INVENTORY_ALERT_SETTINGS.get('DIESEL', {}).get('recipients', [])
+
     if email_recipients:
         try:
-            send_mail(email_subject, email_body, settings.DEFAULT_FROM_EMAIL, email_recipients, fail_silently=False)
-            print(f"ÉXITO: Correo de notificación de carga para {unidad.nombre} enviado.")
-        except Exception as e:
-            print(f"ERROR: No se pudo enviar el correo de notificación de carga. Error: {e}")
+            # Texto alternativo para clientes que no leen HTML
+            text_body = (
+                f"Se ha registrado una nueva carga de combustible.\n\n"
+                f"  - Unidad: {context['unidad_nombre']}\n"
+                f"  - Fecha y Hora: {context['fecha_formateada']}\n\n"
+                f"DETALLE DE LA CARGA:\n"
+                f"  - Diésel (Motor): {context['lts_motor']:.2f} L\n"
+                + (f"  - Diésel (Thermo): {context['lts_thermo']:.2f} L\n" if context['lts_thermo'] > 0 else "") +
+                f"\nESTADO ACTUAL DEL INVENTARIO GENERAL:\n"
+                f"  - Diésel: {context['diesel_actual']:.2f} Litros\n"
+                f"  - Urea:   {context['urea_actual']:.2f} Litros\n"
+                f"  - Aceite: {context['aceite_actual']:.2f} Litros\n"
+            )
 
-    # --- 5. Enviar WhatsApp ---
+            # Crear el mensaje
+            msg = EmailMultiAlternatives(
+                subject=email_subject,
+                body=text_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=email_recipients
+            )
+            
+            # Adjuntar la versión HTML
+            msg.attach_alternative(html_body, "text/html")
+            
+            # Adjuntar las imágenes
+            for cid, image_field in imagenes_a_adjuntar:
+                if image_field and hasattr(image_field, 'name') and image_field.name:
+                    try:
+                        # Abrir el archivo desde el storage (S3 o local)
+                        with default_storage.open(image_field.name, 'rb') as f:
+                            image_data = f.read()
+                        
+                        img = MIMEImage(image_data)
+                        img.add_header('Content-ID', f'<{cid}>') #cid
+                        img.add_header('Content-Disposition', 'inline', filename=os.path.basename(image_field.name))
+                        msg.attach(img)
+                    except Exception as e:
+                        print(f"ERROR: No se pudo adjuntar la imagen {image_field.name} al correo. Error: {e}")
+
+            # Enviar el correo
+            msg.send()
+            print(f"ÉXITO: Correo de notificación de carga (CON IMÁGENES) para {unidad.nombre} enviado.")
+        
+        except Exception as e:
+            # Si falla el envío con imágenes, intenta enviar el de texto simple como fallback
+            print(f"ERROR: No se pudo enviar el correo HTML con imágenes. Error: {e}. Intentando fallback de texto...")
+            try:
+                # Re-usa el text_body y subject definidos antes
+                send_mail(email_subject, text_body, settings.DEFAULT_FROM_EMAIL, email_recipients, fail_silently=False)
+                print(f"ÉXITO (Fallback): Correo de notificación de carga (solo texto) para {unidad.nombre} enviado.")
+            except Exception as e_inner:
+                print(f"ERROR (Fallback): Falló también el envío de texto. Error: {e_inner}")
+
+    # --- 5. Enviar WhatsApp (Sin cambios) ---
     try:
+        whatsapp_body = (
+            f"⛽ *Notificación de Carga*\n\n"
+            f"▪️ *Unidad:* {context['unidad_nombre']}\n"
+            f"▪️ *Fecha:* {context['fecha_formateada']}\n"
+            f"*Detalle de Carga:*\n"
+            f"  - Motor: {context['lts_motor']:.2f} L\n"
+            + (f"  - Thermo: {context['lts_thermo']:.2f} L\n" if context['lts_thermo'] > 0 else "") +
+            f"\n📊 *Inventario Actual:*\n"
+            f"  - Diésel: {context['diesel_actual']:.2f} L\n"
+            f"  - Urea: {context['urea_actual']:.2f} L\n"
+            f"  - Aceite: {context['aceite_actual']:.2f} L"
+        )
+        
         client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
         for recipient in settings.WHATSAPP_RECIPIENTS:
             message = client.messages.create(
