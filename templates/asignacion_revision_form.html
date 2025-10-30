@@ -137,7 +137,6 @@
                             </div>
                         </div>
                         
-                        <!-- Reemplazado: formulario de filtro + botón "Ver Monitor" -->
                         <div class="d-flex align-items-center">
                             <form method="get" class="d-flex align-items-center me-2">
                                 <div class="input-group input-group-sm shadow-sm">
@@ -151,7 +150,6 @@
                                 </div>
                             </form>
 
-                            <!-- Botón Ver Monitor: data-base-url contiene la ruta base y se actualizará desde JS -->
                             <a id="verMonitorBtn" data-base-url="{% url 'monitor-revisiones' %}" 
                                href="{% url 'monitor-revisiones' %}?fecha={{ fecha_filtro|date:'Y-m-d' }}" 
                                class="btn btn-light btn-sm shadow-sm text-primary fw-bold">
@@ -275,199 +273,6 @@
                                     </td>
                                 </tr>
                                 
-                                <div class="modal fade" id="cancelModal-{{ asignacion.pk }}" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog modal-dialog-centered">
-                                        <div class="modal-content border-0 shadow-lg">
-                                            <div class="modal-header bg-danger text-white">
-                                                <h5 class="modal-title">
-                                                    <i class="fas fa-exclamation-triangle me-2"></i> Cancelar Revisión
-                                                </h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <form action="{% url 'cancelar-revision' asignacion.pk %}" method="post">
-                                                {% csrf_token %}
-                                                <div class="modal-body py-4">
-                                                    <div class="alert alert-warning d-flex align-items-center" role="alert">
-                                                        <i class="fas fa-info-circle me-2 fs-5 text-primary"></i>
-                                                        <div>
-                                                            Está a punto de cancelar la revisión de <strong>{{ asignacion.unidad.nombre }}</strong>
-                                                        </div>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-semibold">Motivo de Cancelación</label>
-                                                        <select name="status" class="form-select" required>
-                                                            <option value="CANCELADO">Cancelado (Taller)</option>
-                                                            <option value="NO_VINO">No se presentó la unidad</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-semibold">Comentario Adicional</label>
-                                                        <textarea name="comentario" class="form-control" rows="3" placeholder="Agregue detalles sobre la cancelación..."></textarea>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
-                                                    <button type="submit" class="btn btn-danger rounded-pill px-4">
-                                                        <i class="fas fa-ban me-1"></i> Confirmar Cancelación
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- === MODAL CHECKLIST (REEMPLAZADO) === -->
-                                <div class="modal fade" id="checklistModal-{{ asignacion.pk }}" tabindex="-1" aria-hidden="true" 
-                                     data-unidad-pk="{{ asignacion.unidad.pk }}"> <div class="modal-dialog modal-dialog-centered modal-xl">
-                                        <div class="modal-content border-0 shadow-lg">
-                                            <div class="modal-header bg-warning text-dark">
-                                                <h5 class="modal-title">
-                                                    <i class="fas fa-tools me-2"></i> Fallas Reportadas: {{ asignacion.unidad.nombre }}
-                                                </h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body p-4 bg-light">
-                                                
-                                                <div class="report-controls border rounded p-3 mb-4 bg-white shadow-sm" onclick="event.stopPropagation();">
-                                                    <h6 class="mb-3 fw-bold"><i class="fas fa-history me-2 text-primary"></i>Historial de Correcciones de la Unidad</h6>
-                                                    <form class="report-filter-form row g-2 align-items-end mb-3">
-                                                        <div class="col-md-4">
-                                                            <label for="report_start_date-{{ asignacion.pk }}" class="form-label form-label-sm fw-bold">Desde:</label>
-                                                            <input type="date" id="report_start_date-{{ asignacion.pk }}" class="form-control form-control-sm report-date-filter" 
-                                                                   value="{% now 'Y-m-01' %}"> </div>
-                                                        <div class="col-md-4">
-                                                            <label for="report_end_date-{{ asignacion.pk }}" class="form-label form-label-sm fw-bold">Hasta:</label>
-                                                            <input type="date" id="report_end_date-{{ asignacion.pk }}" class="form-control form-control-sm report-date-filter"
-                                                                   value="{% now 'Y-m-d' %}"> </div>
-                                                        <div class="col-md-4 d-flex justify-content-end">
-                                                            <a href="#" class="btn btn-danger btn-sm me-2 report-pdf-link shadow-sm" 
-                                                               data-base-url="{% url 'unidad-reporte-correcciones-pdf' asignacion.unidad.pk %}"
-                                                               target="_blank"> <i class="fas fa-file-pdf me-1"></i> PDF
-                                                            </a>
-                                                            <a href="#" class="btn btn-success btn-sm report-excel-link shadow-sm"
-                                                               data-base-url="{% url 'unidad-reporte-correcciones-excel' asignacion.unidad.pk %}"
-                                                               target="_blank"> <i class="fas fa-file-excel me-1"></i> Excel
-                                                            </a>
-                                                        </div>
-                                                    </form>
-                                                </div>
-
-                                                {% if asignacion.bad_items_list %}
-                                                    <div class="alert alert-light" role="alert">
-                                                        Mostrando <strong>{{ asignacion.bad_items_list|length }}</strong> falla(s) del último checklist (Fecha: {{ asignacion.latest_checklist_date|date:"d M, Y H:i" }})
-                                                    </div>
-
-                                                    <div class="list-group list-group-flush shadow-sm">
-                                                        {% for item in asignacion.bad_items_list %}
-                                                        <div class="list-group-item p-3" onclick="event.stopPropagation();">
-                                                            <div class="row g-3 align-items-start">
-                                                                <div class="col-auto">
-                                                                    {% if item.foto and item.foto.url %}
-                                                                        <img src="{{ item.foto.url }}" 
-                                                                             class="img-thumbnail img-clickable" 
-                                                                             alt="Evidencia de {{ item.label }}"
-                                                                             data-bs-toggle="modal" 
-                                                                             data-bs-target="#image-viewer-modal"
-                                                                             data-full-src="{{ item.foto.url }}"
-                                                                             onclick="event.stopPropagation();">
-                                                                    {% else %}
-                                                                        <div class="img-thumbnail-placeholder">
-                                                                            <i class="fas fa-camera-slash fa-2x text-muted"></i>
-                                                                        </div>
-                                                                    {% endif %}
-                                                                </div>
-
-                                                                <div class="col-md-4">
-                                                                    <strong class="d-block text-dark">{{ item.label }}</strong>
-                                                                    <small class="text-muted fst-italic">"{{ item.obs|default:"Sin observación."|truncatechars:100 }}"</small>
-                                                                </div>
-
-                                                                <div class="col-md-5">
-                                                                    <div class="form-floating">
-                                                                        <textarea class="form-control" placeholder="Comentario de Admin" 
-                                                                                  id="comentario-{{ item.id }}" 
-                                                                                  style="height: 100px"
-                                                                                  {% if item.status_raw != 'PENDIENTE' %}readonly{% endif %}>{{ item.comentario_admin|default:"" }}</textarea>
-                                                                        <label for="comentario-{{ item.id }}">Comentario de Corrección (Admin)</label>
-                                                                    </div>
-
-                                                                    {% comment %} Mostrar estado si no está pendiente y hay fecha de acción {% endcomment %}
-                                                                    {% if item.status_raw != 'PENDIENTE' and item.fecha_correccion %}
-                                                                        <div class="alert 
-                                                                            {% if item.status_raw == 'CORREGIDO' %}alert-success{% else %}alert-secondary{% endif %} 
-                                                                            d-flex align-items-center mt-2 p-2" role="alert">
-                                                                            <i class="fas {% if item.status_raw == 'CORREGIDO' %}fa-check-circle{% else %}fa-ban{% endif %} me-2"></i>
-                                                                            <small>
-                                                                                {{ item.status }} por <strong>{{ item.corregido_por.username|default:'N/A' }}</strong>
-                                                                                el {{ item.fecha_correccion|date:"d M Y, H:i" }}
-                                                                            </small>
-                                                                        </div>
-                                                                    {% endif %}
-                                                                </div>
-
-                                                                <div class="col-md-2 text-center">
-                                                                    {% if item.status_raw == 'PENDIENTE' %}
-                                                                        <div class="form-check form-switch mb-2">
-                                                                            <input class="form-check-input check-corregir" type="checkbox" role="switch" 
-                                                                                   id="corregido-{{ item.id }}" data-item-pk="{{ item.id }}">
-                                                                            <label class="form-check-label" for="corregido-{{ item.id }}">
-                                                                                ✅ Corregir
-                                                                            </label>
-                                                                        </div>
-
-                                                                        <div class="form-check form-switch mb-2">
-                                                                            <input class="form-check-input check-descartar" type="checkbox" role="switch" 
-                                                                                   id="descartado-{{ item.id }}" data-item-pk="{{ item.id }}">
-                                                                            <label class="form-check-label text-danger" for="descartado-{{ item.id }}">
-                                                                                ❌ Descartar
-                                                                            </label>
-                                                                        </div>
-
-                                                                        <button class="btn btn-success btn-sm w-100 btn-guardar-correccion shadow-sm" 
-                                                                                data-item-pk="{{ item.id }}" 
-                                                                                data-url="{% url 'api-corregir-falla' item.id %}">
-                                                                            <i class="fas fa-save me-1"></i> Guardar
-                                                                        </button>
-                                                                    {% else %}
-                                                                        <span class="badge 
-                                                                            {% if item.status_raw == 'CORREGIDO' %}bg-success{% else %}bg-secondary{% endif %} 
-                                                                            text-white rounded-pill py-2 px-3">
-                                                                            {% if item.status_raw == 'CORREGIDO' %}<i class="fas fa-check-circle me-1"></i> Corregido{% else %}<i class="fas fa-ban me-1"></i> Descartado{% endif %}
-                                                                        </span>
-
-                                                                        <div class="mt-2">
-                                                                            <button class="btn btn-secondary btn-sm w-100 shadow-sm" disabled>
-                                                                                <i class="fas fa-lock me-1"></i> Guardado
-                                                                            </button>
-                                                                        </div>
-                                                                    {% endif %}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        {% endfor %}
-                                                    </div>
-                                                {% else %}
-                                                    <div class="text-center py-4">
-                                                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                                                        <h5 class="text-muted">¡Sin Fallas!</h5>
-                                                        <p class="text-muted">
-                                                            {% if asignacion.latest_checklist_date %}
-                                                                No se encontraron ítems en 'MALO' en el último checklist (Fecha: {{ asignacion.latest_checklist_date|date:"d M, Y" }}).
-                                                            {% else %}
-                                                                No se ha registrado ningún checklist para esta unidad.
-                                                            {% endif %}
-                                                        </p>
-                                                    </div>
-                                                {% endif %}
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- === FIN MODAL CHECKLIST === -->
-
                                 {% empty %}
                                 <tr>
                                     <td colspan="5" class="text-center py-5">
@@ -498,6 +303,200 @@
     </div>
 </div>
 
+{% for asignacion in asignaciones_del_dia %}
+
+    <div class="modal fade" id="cancelModal-{{ asignacion.pk }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Cancelar Revisión
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{% url 'cancelar-revision' asignacion.pk %}" method="post">
+                    {% csrf_token %}
+                    <div class="modal-body py-4">
+                        <div class="alert alert-warning d-flex align-items-center" role="alert">
+                            <i class="fas fa-info-circle me-2 fs-5 text-primary"></i>
+                            <div>
+                                Está a punto de cancelar la revisión de <strong>{{ asignacion.unidad.nombre }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Motivo de Cancelación</label>
+                            <select name="status" class="form-select" required>
+                                <option value="CANCELADO">Cancelado (Taller)</option>
+                                <option value="NO_VINO">No se presentó la unidad</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Comentario Adicional</label>
+                            <textarea name="comentario" class="form-control" rows="3" placeholder="Agregue detalles sobre la cancelación..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="submit" class="btn btn-danger rounded-pill px-4">
+                            <i class="fas fa-ban me-1"></i> Confirmar Cancelación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="checklistModal-{{ asignacion.pk }}" tabindex="-1" aria-hidden="true" 
+         data-unidad-pk="{{ asignacion.unidad.pk }}"> <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">
+                        <i class="fas fa-tools me-2"></i> Fallas Reportadas: {{ asignacion.unidad.nombre }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    
+                    <div class="report-controls border rounded p-3 mb-4 bg-white shadow-sm" onclick="event.stopPropagation();">
+                        <h6 class="mb-3 fw-bold"><i class="fas fa-history me-2 text-primary"></i>Historial de Correcciones de la Unidad</h6>
+                        <form class="report-filter-form row g-2 align-items-end mb-3">
+                            <div class="col-md-4">
+                                <label for="report_start_date-{{ asignacion.pk }}" class="form-label form-label-sm fw-bold">Desde:</label>
+                                <input type="date" id="report_start_date-{{ asignacion.pk }}" class="form-control form-control-sm report-date-filter" 
+                                       value="{% now 'Y-m-01' %}"> </div>
+                            <div class="col-md-4">
+                                <label for="report_end_date-{{ asignacion.pk }}" class="form-label form-label-sm fw-bold">Hasta:</label>
+                                <input type="date" id="report_end_date-{{ asignacion.pk }}" class="form-control form-control-sm report-date-filter"
+                                       value="{% now 'Y-m-d' %}"> </div>
+                            <div class="col-md-4 d-flex justify-content-end">
+                                <a href="#" class="btn btn-danger btn-sm me-2 report-pdf-link shadow-sm" 
+                                   data-base-url="{% url 'unidad-reporte-correcciones-pdf' asignacion.unidad.pk %}"
+                                   target="_blank"> <i class="fas fa-file-pdf me-1"></i> PDF
+                                </a>
+                                <a href="#" class="btn btn-success btn-sm report-excel-link shadow-sm"
+                                   data-base-url="{% url 'unidad-reporte-correcciones-excel' asignacion.unidad.pk %}"
+                                   target="_blank"> <i class="fas fa-file-excel me-1"></i> Excel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+
+                    {% if asignacion.bad_items_list %}
+                        <div class="alert alert-light" role="alert">
+                            Mostrando <strong>{{ asignacion.bad_items_list|length }}</strong> falla(s) del último checklist (Fecha: {{ asignacion.latest_checklist_date|date:"d M, Y H:i" }})
+                        </div>
+
+                        <div class="list-group list-group-flush shadow-sm">
+                            {% for item in asignacion.bad_items_list %}
+                            <div class="list-group-item p-3" onclick="event.stopPropagation();">
+                                <div class="row g-3 align-items-start">
+                                    <div class="col-auto">
+                                        {% if item.foto and item.foto.url %}
+                                            <img src="{{ item.foto.url }}" 
+                                                 class="img-thumbnail img-clickable" 
+                                                 alt="Evidencia de {{ item.label }}"
+                                                 data-bs-toggle="modal" 
+                                                 data-bs-target="#image-viewer-modal"
+                                                 data-full-src="{{ item.foto.url }}"
+                                                 onclick="event.stopPropagation();">
+                                        {% else %}
+                                            <div class="img-thumbnail-placeholder">
+                                                <i class="fas fa-camera-slash fa-2x text-muted"></i>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <strong class="d-block text-dark">{{ item.label }}</strong>
+                                        <small class="text-muted fst-italic">"{{ item.obs|default:"Sin observación."|truncatechars:100 }}"</small>
+                                    </div>
+
+                                    <div class="col-md-5">
+                                        <div class="form-floating">
+                                            <textarea class="form-control" placeholder="Comentario de Admin" 
+                                                      id="comentario-{{ item.id }}" 
+                                                      style="height: 100px"
+                                                      {% if item.status_raw != 'PENDIENTE' %}readonly{% endif %}>{{ item.comentario_admin|default:"" }}</textarea>
+                                            <label for="comentario-{{ item.id }}">Comentario de Corrección (Admin)</label>
+                                        </div>
+
+                                        {% comment %} Mostrar estado si no está pendiente y hay fecha de acción {% endcomment %}
+                                        {% if item.status_raw != 'PENDIENTE' and item.fecha_correccion %}
+                                            <div class="alert 
+                                                {% if item.status_raw == 'CORREGIDO' %}alert-success{% else %}alert-secondary{% endif %} 
+                                                d-flex align-items-center mt-2 p-2" role="alert">
+                                                <i class="fas {% if item.status_raw == 'CORREGIDO' %}fa-check-circle{% else %}fa-ban{% endif %} me-2"></i>
+                                                <small>
+                                                    {{ item.status }} por <strong>{{ item.corregido_por.username|default:'N/A' }}</strong>
+                                                    el {{ item.fecha_correccion|date:"d M Y, H:i" }}
+                                                </small>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-2 text-center">
+                                        {% if item.status_raw == 'PENDIENTE' %}
+                                            <div class="form-check form-switch mb-2">
+                                                <input class="form-check-input check-corregir" type="checkbox" role="switch" 
+                                                       id="corregido-{{ item.id }}" data-item-pk="{{ item.id }}">
+                                                <label class="form-check-label" for="corregido-{{ item.id }}">
+                                                    ✅ Corregir
+                                                </label>
+                                            </div>
+
+                                            <div class="form-check form-switch mb-2">
+                                                <input class="form-check-input check-descartar" type="checkbox" role="switch" 
+                                                       id="descartado-{{ item.id }}" data-item-pk="{{ item.id }}">
+                                                <label class="form-check-label text-danger" for="descartado-{{ item.id }}">
+                                                    ❌ Descartar
+                                                </label>
+                                            </div>
+
+                                            <button class="btn btn-success btn-sm w-100 btn-guardar-correccion shadow-sm" 
+                                                    data-item-pk="{{ item.id }}" 
+                                                    data-url="{% url 'api-corregir-falla' item.id %}">
+                                                <i class="fas fa-save me-1"></i> Guardar
+                                            </button>
+                                        {% else %}
+                                            <span class="badge 
+                                                {% if item.status_raw == 'CORREGIDO' %}bg-success{% else %}bg-secondary{% endif %} 
+                                                text-white rounded-pill py-2 px-3">
+                                                {% if item.status_raw == 'CORREGIDO' %}<i class="fas fa-check-circle me-1"></i> Corregido{% else %}<i class="fas fa-ban me-1"></i> Descartado{% endif %}
+                                            </span>
+
+                                            <div class="mt-2">
+                                                <button class="btn btn-secondary btn-sm w-100 shadow-sm" disabled>
+                                                    <i class="fas fa-lock me-1"></i> Guardado
+                                                </button>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h5 class="text-muted">¡Sin Fallas!</h5>
+                            <p class="text-muted">
+                                {% if asignacion.latest_checklist_date %}
+                                    No se encontraron ítems en 'MALO' en el último checklist (Fecha: {{ asignacion.latest_checklist_date|date:"d M, Y" }}).
+                                {% else %}
+                                    No se ha registrado ningún checklist para esta unidad.
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endfor %}
 <div class="modal fade" id="image-viewer-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content">
