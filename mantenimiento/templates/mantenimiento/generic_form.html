@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %} <!-- Asumo que usas crispy_forms, si no, usa {{ form.as_p }} -->
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm rounded-lg">
+                <div class="card-body">
+                    <h2 class="mb-4">{{ titulo }}</h2>
+                    <form method="POST" id="main-form">
+                        {% csrf_token %}
+                        
+                        <!-- {% crispy form %} --> <!-- Descomenta si usas crispy -->
+                        {{ form.as_p }} <!-- Borra esto si usas crispy -->
+
+                        <hr>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                        <a href="{{ request.META.HTTP_REFERER|default:'/' }}" class="btn btn-secondary">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script de JS para el formulario de Asignar Tarea (mostrar/ocultar campo correctivo) -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoSelect = document.getElementById('id_tipo_mantenimiento');
+    const correctivoField = document.getElementById('id_mantenimiento_correctivo');
+    
+    if (tipoSelect && correctivoField) {
+        // Obtenemos el contenedor del formulario (asumiendo que es un <p> o <div>)
+        const correctivoWrapper = correctivoField.closest('p'); // Cambia a 'div' si no usas .as_p
+
+        function toggleCorrectivoField() {
+            if (tipoSelect.value === 'CORRECTIVO') {
+                correctivoWrapper.style.display = 'block';
+            } else {
+                correctivoWrapper.style.display = 'none';
+            }
+        }
+
+        // Ejecutar al cargar la página
+        toggleCorrectivoField();
+
+        // Ejecutar al cambiar la selección
+        tipoSelect.addEventListener('change', toggleCorrectivoField);
+    }
+});
+</script>
+{% endblock %}

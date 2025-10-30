@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.utils import timezone
 from django.db import transaction
+from django.contrib.auth.models import User, Group # ¡Añade Group!
 
 # ===================================================================
 # 1. MODELOS PRINCIPALES (SIN DEPENDENCIAS)

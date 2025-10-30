@@ -62,6 +62,9 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'widget_tweaks',
     'storages', # <--- AÑADIDO: Para la integración con S3
+    'mantenimiento', # App de mantenimiento
+    'crispy_forms',
+    'crispy_bootstrap5',  # Solo si instalaste el pack Bootstrap 5
 ]
 
 MIDDLEWARE = [
@@ -276,3 +279,6 @@ WHATSAPP_RECIPIENTS = [
     'whatsapp:+528180298767',
     'whatsapp:+528123465830'
 ]
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"

@@ -6,6 +6,8 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('flota.urls')), # Incluir las URLs de nuestra app
+    path('mantenimiento/', include('mantenimiento.urls', namespace='mantenimiento')),
+    # -------------------------
 ]
 
 # Servir archivos de medios en modo de desarrollo

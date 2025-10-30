@@ -1,0 +1,476 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 px-2">
+        <div>
+            <h1 class="h3 mb-1">{{ titulo }}</h1>
+            <p class="text-muted mb-0">Revisa tus tareas de mantenimiento</p>
+        </div>
+        <div class="d-flex align-items-center">
+            <span class="badge bg-light text-dark fs-6 d-none d-sm-block">
+                <i class="fas fa-user-circle me-1"></i>{{ request.user.get_full_name|default:request.user.username }}
+            </span>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card metric-card shadow-sm border-0 h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-xs fw-bold text-primary text-uppercase mb-1">Pendientes</div>
+                        <div class="h4 mb-0 fw-bold text-gray-800">{{ tareas_pendientes_count }}</div>
+                    </div>
+                    <div class="icon-circle bg-primary-light">
+                        <i class="fas fa-clock text-primary fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card metric-card shadow-sm border-0 h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-xs fw-bold text-info text-uppercase mb-1">En Proceso</div>
+                        <div class="h4 mb-0 fw-bold text-gray-800">{{ tareas_en_proceso_count }}</div>
+                    </div>
+                    <div class="icon-circle bg-info-light">
+                        <i class="fas fa-cogs text-info fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card metric-card shadow-sm border-0 h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-xs fw-bold text-success text-uppercase mb-1">Completadas (7d)</div>
+                        <div class="h4 mb-0 fw-bold text-gray-800">{{ tareas_completadas_recientes_count }}</div>
+                    </div>
+                    <div class="icon-circle bg-success-light">
+                        <i class="fas fa-check-circle text-success fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card metric-card shadow-sm border-0 h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-xs fw-bold text-warning text-uppercase mb-1">Tiempo Promedio</div>
+                        <div class="h4 mb-0 fw-bold text-gray-800">{{ tiempo_promedio_minutos }} min</div>
+                    </div>
+                    <div class="icon-circle bg-warning-light">
+                        <i class="fas fa-stopwatch text-warning fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header py-3 bg-light border-0">
+            <h6 class="m-0 fw-bold text-primary">
+                <i class="fas fa-filter me-1"></i> Filtrar Tareas
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{% url 'mantenimiento:tecnico_dashboard' %}">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="filtroEstado" class="form-label">Estado</label>
+                        <select class="form-select" id="filtroEstado" name="filtroEstado">
+                            <option value="" {% if not request.GET.filtroEstado %}selected{% endif %}>Todos los estados</option>
+                            <option value="ASIGNADA" {% if request.GET.filtroEstado == 'ASIGNADA' %}selected{% endif %}>Asignadas</option>
+                            <option value="EN_PROCESO" {% if request.GET.filtroEstado == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtroTipo" class="form-label">Tipo</label>
+                        <select class="form-select" id="filtroTipo" name="filtroTipo">
+                            <option value="" {% if not request.GET.filtroTipo %}selected{% endif %}>Todos los tipos</option>
+                            <option value="PREVENTIVO" {% if request.GET.filtroTipo == 'PREVENTIVO' %}selected{% endif %}>Preventivo</option>
+                            <option value="CORRECTIVO" {% if request.GET.filtroTipo == 'CORRECTIVO' %}selected{% endif %}>Correctivo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtroUnidad" class="form-label">Unidad</label>
+                        <select class="form-select" id="filtroUnidad" name="filtroUnidad">
+                            <option value="" {% if not request.GET.filtroUnidad %}selected{% endif %}>Todas las unidades</option>
+                            {% for unidad in unidades %}
+                            <option value="{{ unidad.id }}" {% if request.GET.filtroUnidad == unidad.id|stringformat:"s" %}selected{% endif %}>{{ unidad.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100 me-2">
+                            <i class="fas fa-search me-1"></i>Buscar
+                        </button>
+                        <a href="{% url 'mantenimiento:tecnico_dashboard' %}" class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="Limpiar Filtros">
+                            <i class="fas fa-sync-alt"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <h5 class="mb-3 fw-bold">
+            <i class="fas fa-list-task me-2"></i>Tareas Pendientes y En Proceso
+            <span class="badge bg-primary rounded-pill ms-2">{{ tareas.count }}</span>
+        </h5>
+        
+        <div class="row g-3 d-lg-none">
+            {% for tarea in tareas %}
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm border-0 h-100 task-card priority-{{ tarea.prioridad }}">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold text-primary">{{ tarea.unidad.nombre }}</h6>
+                        <span class_badge_estado="{{ tarea.status }}">
+                            {{ tarea.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <span class_badge_prioridad="{{ tarea.prioridad }}">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Prioridad {{ tarea.get_prioridad_display }}
+                            </span>
+                            <span class_badge_tipo="{{ tarea.tipo_mantenimiento }}">
+                                {{ tarea.get_tipo_mantenimiento_display }}
+                            </span>
+                        </div>
+                        <p class="mb-2"><strong>ID Tarea:</strong> #{{ tarea.id }}</p>
+                        <p class="mb-0 text-muted small">
+                            Asignada por {{ tarea.admin.username }}
+                            <br>
+                            {{ tarea.fecha_asignacion|naturaltime }} ({{ tarea.fecha_asignacion|date:"d/m/Y" }})
+                        </p>
+                    </div>
+                    <div class="card-footer bg-white border-0 p-3">
+                        <a href="{% url 'mantenimiento:tecnico_tarea_detalle' tarea.pk %}" class="btn 
+                            {% if tarea.status == 'ASIGNADA' %} btn-primary
+                            {% else %} btn-info {% endif %} w-100 fw-bold py-2">
+                            {% if tarea.status == 'ASIGNADA' %}
+                                <i class="fas fa-play-circle me-1"></i>Iniciar Tarea
+                            {% else %}
+                                <i class="fas fa-arrow-right-circle me-1"></i>Continuar Tarea
+                            {% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="card shadow-sm d-none d-lg-block">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="tablaTareas">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">ID Tarea</th>
+                                <th>Unidad</th>
+                                <th>Tipo</th>
+                                <th>Estado</th>
+                                <th>Prioridad</th>
+                                <th>Asignada Por</th>
+                                <th>Fecha Asignación</th>
+                                <th class="text-end pe-4">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tarea in tareas %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="fw-bold">#{{ tarea.id }}</div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">{{ tarea.unidad.nombre }}</div>
+                                    <small class="text-muted">{{ tarea.unidad.modelo|default:"-" }}</small>
+                                </td>
+                                <td>
+                                    <span class_badge_tipo="{{ tarea.tipo_mantenimiento }}">
+                                        {{ tarea.get_tipo_mantenimiento_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class_badge_estado="{{ tarea.status }}">
+                                        {{ tarea.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class_badge_prioridad="{{ tarea.prioridad }}">
+                                        {{ tarea.get_prioridad_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-user-circle text-muted"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-2">
+                                            {{ tarea.admin.username }}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div>{{ tarea.fecha_asignacion|date:"d/m/Y" }}</div>
+                                    <small class="text-muted">{{ tarea.fecha_asignacion|naturaltime }}</small>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a href="{% url 'mantenimiento:tecnico_tarea_detalle' tarea.pk %}" class="btn 
+                                        {% if tarea.status == 'ASIGNADA' %} btn-primary
+                                        {% else %} btn-info {% endif %} btn-sm">
+                                        {% if tarea.status == 'ASIGNADA' %}
+                                            <i class="fas fa-play-circle me-1"></i>Iniciar
+                                        {% else %}
+                                            <i class="fas fa-arrow-right-circle me-1"></i>Continuar
+                                        {% endif %}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {% if not tareas %}
+        <div class="text-center py-5">
+            <div class="py-5">
+                <i class="fas fa-check-circle text-success display-4"></i>
+                <h5 class="mt-3 text-muted">¡Felicidades!</h5>
+                <p class="text-muted">No tienes tareas pendientes en este momento.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div>
+        <h5 class="mb-3 fw-bold">
+            <i class="fas fa-check-circle me-2 text-success"></i>Tareas Completadas Recientemente
+            <span class="badge bg-success rounded-pill ms-2">{{ tareas_completadas.count }}</span>
+        </h5>
+
+        <div class="row g-3 d-lg-none">
+            {% for tarea in tareas_completadas %}
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0 fw-bold">{{ tarea.unidad.nombre }}</h6>
+                            <span class_badge_tipo="{{ tarea.tipo_mantenimiento }}">{{ tarea.get_tipo_mantenimiento_display }}</span>
+                        </div>
+                        <p class="mb-2 text-muted small">ID Tarea: #{{ tarea.id }}</p>
+                        <p class="mb-0 small">
+                            <strong>Finalizada:</strong> {{ tarea.fecha_fin|naturaltime }}
+                            <br>
+                            <strong>Tiempo Total:</strong> {{ tarea.tiempo_total_minutos }} min
+                        </p>
+                    </div>
+                    <div class="card-footer bg-white border-0 p-3">
+                        <a href="#" class="btn btn-outline-success btn-sm w-100">
+                            <i class="fas fa-clipboard-check me-1"></i>Ver Reporte
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+                {% if not tareas %}
+                {% else %}
+                <div class="col-12">
+                    <p class="text-muted text-center py-3">No has completado tareas recientemente.</p>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <div class="card shadow-sm d-none d-lg-block">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">ID Tarea</th>
+                                <th>Unidad</th>
+                                <th>Tipo</th>
+                                <th>Fecha Finalización</th>
+                                <th>Tiempo Total</th>
+                                <th class="text-end pe-4">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tarea in tareas_completadas %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0">
+                                            <i class="fas fa-check-circle text-success"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <strong>#{{ tarea.id }}</strong>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">{{ tarea.unidad.nombre }}</div>
+                                </td>
+                                <td>
+                                    <span class_badge_tipo="{{ tarea.tipo_mantenimiento }}">
+                                        {{ tarea.get_tipo_mantenimiento_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div>{{ tarea.fecha_fin|date:"d/m/Y" }}</div>
+                                    <small class="text-muted">{{ tarea.fecha_fin|naturaltime }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark">
+                                        <i class="fas fa-stopwatch me-1"></i>
+                                        {{ tarea.tiempo_total_minutos }} min
+                                    </span>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a href="#" class="btn btn-outline-success btn-sm">
+                                        <i class="fas fa-clipboard-check me-1"></i>Ver Reporte
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="py-3">
+                                        <i class="fas fa-inbox text-muted display-6"></i>
+                                        <p class="text-muted mt-2 mb-0">Aún no has completado tareas.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    :root {
+        /* Colores Ligeros para Fondos de Iconos y Badges */
+        --primary-light: #e9f0ff;
+        --info-light: #e3f8fb;
+        --success-light: #e6f7f0;
+        --warning-light: #fff8e6;
+        --danger-light: #feeeee;
+        
+        --text-dark: #1e293b;
+        --text-gray: #64748b;
+    }
+
+    body {
+        background-color: #f8f9fa; /* Un fondo ligeramente más gris que el blanco */
+    }
+
+    /* Estilos de las Tarjetas de Métricas */
+    .metric-card .icon-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .metric-card .text-xs {
+        font-size: 0.75rem;
+    }
+
+    /* Estilos de Badges Dinámicos */
+    [class_badge_estado], [class_badge_prioridad], [class_badge_tipo] {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.35em 0.65em;
+        border-radius: 50rem;
+    }
+    
+    [class_badge_estado="ASIGNADA"] {
+        background-color: var(--warning-light);
+        color: var(--secondary-dark); /* Asumiendo var(--secondary-dark) de base.html */
+    }
+    [class_badge_estado="EN_PROCESO"] {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    [class_badge_prioridad="ALTA"] {
+        background-color: var(--danger-light);
+        color: var(--danger);
+    }
+    [class_badge_prioridad="MEDIA"] {
+        background-color: var(--warning-light);
+        color: var(--secondary-dark);
+    }
+    [class_badge_prioridad="BAJA"] {
+        background-color: var(--success-light);
+        color: var(--success);
+    }
+
+    [class_badge_tipo="PREVENTIVO"] {
+        background-color: var(--info-light);
+        color: #0c6374;
+    }
+    [class_badge_tipo="CORRECTIVO"] {
+        background-color: var(--warning-light);
+        color: var(--secondary-dark);
+    }
+    
+    /* Estilo de Tarjeta de Tarea para Móvil */
+    .task-card {
+        border-radius: var(--border-radius-lg);
+        border: 1px solid var(--gray-light);
+        /* Borde izquierdo sutil para prioridad */
+        border-left: 5px solid var(--gray); 
+        transition: all 0.3s ease;
+    }
+
+    .task-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .task-card.priority-ALTA { border-left-color: var(--danger); }
+    .task-card.priority-MEDIA { border-left-color: var(--warning); }
+    .task-card.priority-BAJA { border-left-color: var(--success); }
+    
+    .task-card .card-header {
+        border-bottom: 1px solid var(--gray-light);
+    }
+
+    .task-card .card-footer {
+        background-color: #f8fafc;
+    }
+
+    .table th {
+        border-top: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        color: var(--text-gray);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips de Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-lg rounded-lg border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">Confirmar Eliminación</h3>
+                </div>
+                <div class="card-body">
+                    <p class="fs-5">¿Estás seguro de que deseas eliminar permanentemente el siguiente objeto?</p>
+                    
+                    <div class="alert alert-danger">
+                        <strong>{{ object }}</strong>
+                    </div>
+                    
+                    <p class="text-muted">Esta acción no se puede deshacer.</p>
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        <hr>
+                        <button type="submit" class="btn btn-danger">Sí, Eliminar</button>
+                        <a href="{{ request.META.HTTP_REFERER|default:'/' }}" class="btn btn-secondary">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

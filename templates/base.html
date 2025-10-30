@@ -376,6 +376,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     {% if user.is_authenticated %}
                         {% with user_groups=user.groups.all|join:',' %}
@@ -388,54 +389,58 @@
                                 
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-cogs me-1"></i> Gestionar
+                                        <i class="fas fa-truck me-1"></i> Gestión Flota
                                     </a>
                                     <ul class="dropdown-menu">
+                                        <li><h6 class="dropdown-header">Gestión</h6></li>
                                         <li><a class="dropdown-item" href="{% url 'unidad-list' %}"><i class="fas fa-truck"></i> Unidades</a></li>
                                         <li><a class="dropdown-item" href="{% url 'operador-list' %}"><i class="fas fa-user-tie"></i> Operadores</a></li>
-                                        <li><a class="dropdown-item" href="{% url 'entrega-suministros-list' %}"><i class="fas fa-ticket-alt"></i> Entrega Cinchos/Tarjetas</a></li>
-                                    </ul>
-                                </li>
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-calendar-check me-1"></i> Revisiones
-                                    </a>
-                                    <ul class="dropdown-menu">
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><h6 class="dropdown-header">Revisiones</h6></li>
                                         <li><a class="dropdown-item" href="{% url 'asignar-revision' %}"><i class="fas fa-plus"></i> Asignar Revisiones</a></li>
                                         <li><a class="dropdown-item" href="{% url 'monitor-revisiones' %}"><i class="fas fa-desktop"></i> Monitor Diario</a></li>
-                                        <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item" href="{% url 'corregir-checklist-mal' %}">
                                             <i class="fas fa-exclamation-triangle text-danger"></i> Corregir Items (MALO)
                                         </a></li>
-                                    </ul>
-                                </li>
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-tasks me-1"></i> Inspecciones
-                                    </a>
-                                    <ul class="dropdown-menu">
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><h6 class="dropdown-header">Inspecciones</h6></li>
                                         <li><a class="dropdown-item" href="{% url 'checklist-list' %}"><i class="fas fa-clipboard-check"></i> Checklists</a></li>
                                         <li><a class="dropdown-item" href="{% url 'llantas-list' %}"><i class="fas fa-dot-circle"></i> Llantas</a></li>
                                     </ul>
                                 </li>
-                                <li class="nav-item">
-                                    <a class="nav-link {% if 'panel-de-control' in request.path %}active{% endif %}" href="{% url 'admin-panel-de-control' %}">
-                                        <i class="fas fa-clipboard-list me-1"></i> Panel de Control
-                                    </a>
-                                </li>
+
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="fas fa-gas-pump me-1"></i> Cargas
+                                        <i class="fas fa-dolly-flatbed me-1"></i> Suministros
                                     </a>
                                     <ul class="dropdown-menu">
+                                        <li><h6 class="dropdown-header">Cargas</h6></li>
                                         <li><a class="dropdown-item" href="{% url 'cargadiesel-list' %}"><i class="fas fa-fire"></i> Cargas Diésel</a></li>
                                         <li><a class="dropdown-item" href="{% url 'cargaaceite-list' %}"><i class="fas fa-oil-can"></i> Cargas Aceite</a></li>
                                         <li><a class="dropdown-item" href="{% url 'cargaurea-list' %}"><i class="fas fa-flask"></i> Cargas Urea</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><h6 class="dropdown-header">Compras y Entregas</h6></li>
+                                        <li><a class="dropdown-item" href="{% url 'comprasuministro-list' %}"><i class="fas fa-shopping-cart"></i> Compras</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'entrega-suministros-list' %}"><i class="fas fa-ticket-alt"></i> Entrega Cinchos/Tarjetas</a></li>
                                     </ul>
                                 </li>
+
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle {% if 'mantenimiento/admin' in request.path %}active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-wrench me-1"></i> Mantenimiento
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="{% url 'mantenimiento:admin_dashboard' %}"><i class="fas fa-tasks"></i> Panel de Tareas</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'mantenimiento:asignar_tarea' %}"><i class="fas fa-plus-circle"></i> Asignar Tarea</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="{% url 'mantenimiento:herramienta_list' %}"><i class="fas fa-toolbox"></i> Catálogo Herramientas</a></li>
+                                        <li><a class="dropdown-item" href="{% url 'mantenimiento:correctivo_list' %}"><i class="fas fa-book"></i> Catálogo Correctivo</a></li>
+                                    </ul>
+                                </li>
+                                
                                 <li class="nav-item">
-                                    <a class="nav-link {% if 'comprasuministro' in request.path %}active{% endif %}" href="{% url 'comprasuministro-list' %}">
-                                        <i class="fas fa-shopping-cart me-1"></i> Compras
+                                    <a class="nav-link {% if 'panel-de-control' in request.path %}active{% endif %}" href="{% url 'admin-panel-de-control' %}">
+                                        <i class="fas fa-clipboard-list me-1"></i> Panel de Control
                                     </a>
                                 </li>
 
@@ -452,21 +457,30 @@
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link {% if 'tecnico-seleccionar-unidad' in request.path %}active{% endif %}" href="{% url 'tecnico-seleccionar-unidad' %}">
-                                        <i class="fas fa-plus-circle me-1"></i> Iniciar Proceso
+                                        <i class="fas fa-plus-circle me-1"></i> Iniciar Proceso Flota
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'mantenimiento/tecnico' in request.path %}active{% endif %}" href="{% url 'mantenimiento:tecnico_dashboard' %}">
+                                        <i class="fas fa-wrench me-1"></i> Mis Tareas (Mto.)
                                     </a>
                                 </li>
                                 
                             {% elif 'Tecnico' in user_groups %}
                                 <li class="nav-item">
-                                    <a class="nav-link {% if 'tecnico' in request.path %}active{% endif %}" href="{% url 'tecnico-seleccionar-unidad' %}">
-                                        <i class="fas fa-tools me-1"></i> Iniciar Proceso
+                                    <a class="nav-link {% if 'tecnico' in request.path and 'mantenimiento' not in request.path %}active{% endif %}" href="{% url 'tecnico-seleccionar-unidad' %}">
+                                        <i class="fas fa-tools me-1"></i> Iniciar Proceso Flota
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'mantenimiento/tecnico' in request.path %}active{% endif %}" href="{% url 'mantenimiento:tecnico_dashboard' %}">
+                                        <i class="fas fa-wrench me-1"></i> Mis Tareas (Mto.)
                                     </a>
                                 </li>
                             {% endif %}
                         {% endwith %}
                     {% endif %}
                 </ul>
-
                 <span class="navbar-text">
                     {% if user.is_authenticated %}
                         <span class="user-badge">

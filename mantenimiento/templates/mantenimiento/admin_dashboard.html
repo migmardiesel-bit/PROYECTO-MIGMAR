@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>{{ titulo }}</h1>
+        <a href="{% url 'mantenimiento:asignar_tarea' %}" class="btn btn-primary">Asignar Nueva Tarea</a>
+    </div>
+
+    <!-- Opcional: Enlaces a los Catálogos -->
+    <div class="mb-3">
+        <a href="{% url 'mantenimiento:herramienta_list' %}" class="btn btn-outline-secondary btn-sm">Gestionar Herramientas</a>
+        <a href="{% url 'mantenimiento:correctivo_list' %}" class="btn btn-outline-secondary btn-sm">Gestionar Tareas Correctivas</a>
+    </div>
+
+    <div class="card shadow-sm rounded-lg">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID Tarea</th>
+                            <th>Unidad</th>
+                            <th>Técnico</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Asignada</th>
+                            <th>Tiempo Total</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tarea in tareas %}
+                        <tr>
+                            <td><strong>{{ tarea.id }}</strong></td>
+                            <td>{{ tarea.unidad.nombre }}</td>
+                            <td>{{ tarea.tecnico.username }}</td>
+                            <td>{{ tarea.get_tipo_mantenimiento_display }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if tarea.status == 'ASIGNADA' %} bg-warning text-dark
+                                    {% elif tarea.status == 'EN_PROCESO' %} bg-info text-dark
+                                    {% elif tarea.status == 'COMPLETADA' %} bg-success
+                                    {% else %} bg-secondary {% endif %}">
+                                    {{ tarea.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ tarea.fecha_asignacion|naturaltime }}</td>
+                            <td>
+                                {% if tarea.status == 'COMPLETADA' %}
+                                    {{ tarea.tiempo_total_minutos }} min
+                                {% else %}
+                                    ---
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'mantenimiento:admin_tarea_detalle' tarea.pk %}" class="btn btn-sm btn-outline-primary">
+                                    Ver Progreso
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">No hay tareas asignadas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="card shadow-sm rounded-lg mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">Progreso de la Tarea</h4>
+                </div>
+                <div class="card-body">
+                    {% if tarea.tipo_mantenimiento == 'PREVENTIVO' %}
+                        <h5 class="mt-2">Checklist de Tareas Preventivas</h5>
+                        <ul class="list-group">
+                        {% for subtask in subtasks %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ subtask.get_nombre_subtask_display }}
+                                {% if subtask.completada %}
+                                    <span class="badge bg-success">Completada</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    
+                    {% elif tarea.tipo_mantenimiento == 'CORRECTIVO' %}
+                        <h5 class="mt-2">Tarea Correctiva</h5>
+                        <div class="alert alert-secondary">
+                            <strong>{{ tarea.mantenimiento_correctivo.nombre }}</strong>
+                            <p>{{ tarea.mantenimiento_correctivo.descripcion|default:"Sin descripción." }}</p>
+                        </div>
+                    {% endif %}
+
+                    <h5 class="mt-4">Herramientas Solicitadas por el Técnico</h5>
+                    {% if herramientas %}
+                        <ul class="list-group">
+                        {% for herram in herramientas %}
+                            <li class="list-group-item">{{ herram.nombre }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="alert alert-warning">El técnico aún no ha seleccionado las herramientas.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm rounded-lg sticky-top" style="top: 20px;">
+                <div class="card-header">
+                    <h5 class="mb-0">Información de la Tarea</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>ID Tarea:</strong> {{ tarea.id }}</li>
+                    <li class="list-group-item"><strong>Unidad:</strong> {{ tarea.unidad.nombre }}</li>
+                    <li class="list-group-item"><strong>Técnico:</strong> {{ tarea.tecnico.username }}</li>
+                    <li class="list-group-item"><strong>Estado:</strong> 
+                        <span class="badge 
+                            {% if tarea.status == 'ASIGNADA' %} bg-warning text-dark
+                            {% elif tarea.status == 'EN_PROCESO' %} bg-info text-dark
+                            {% elif tarea.status == 'COMPLETADA' %} bg-success
+                            {% else %} bg-secondary {% endif %}">
+                            {{ tarea.get_status_display }}
+                        </span>
+                    </li>
+                    <li class="list-group-item"><strong>Asignada por:</strong> {{ tarea.admin.username }}</li>
+                    <li class="list-group-item"><strong>Notas del Admin:</strong> {{ tarea.notas_admin|default:"Ninguna." }}</li>
+                </ul>
+                <div class="card-footer">
+                    <h6 class="mb-2">Tiempos</h6>
+                    <p class="mb-1"><small><strong>Asignada:</strong> {{ tarea.fecha_asignacion }}</small></p>
+                    <p class="mb-1"><small><strong>Iniciada:</strong> {{ tarea.fecha_inicio|default:"Aún no iniciada" }}</small></p>
+                    <p class="mb-1"><small><strong>Finalizada:</strong> {{ tarea.fecha_fin|default:"Aún no finalizada" }}</small></p>
+                    {% if tarea.status == 'COMPLETADA' %}
+                        <h5 class="mt-2 text-success">Tiempo Total: {{ tarea.tiempo_total_minutos }} minutos</h5>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
