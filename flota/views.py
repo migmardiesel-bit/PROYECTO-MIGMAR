@@ -360,7 +360,7 @@ class UnidadUpdateView(AdminRequiredMixin, UpdateView):
     success_url = reverse_lazy('unidad-list')
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['titulo'] = f"Edit Unit: {self.object.nombre}"
+        context['titulo'] = f"Editar Unidad: {self.object.nombre}"
         return context
 
 class UnidadDeleteView(AdminRequiredMixin, DeleteView):
@@ -368,7 +368,7 @@ class UnidadDeleteView(AdminRequiredMixin, DeleteView):
     template_name = 'generic_confirm_delete.html'
     success_url = reverse_lazy('unidad-list')
     def form_valid(self, form):
-        messages.success(self.request, f"Unit '{self.object.nombre}' successfully deleted.")
+        messages.success(self.request, f"Unidad '{self.object.nombre}' successfully deleted.")
         return super().form_valid(form)
 
 class UnidadDetailRendimientoView(AdminRequiredMixin, DetailView):
@@ -495,7 +495,7 @@ class CargaDieselCreateView(AdminRequiredMixin, CreateView):
     success_url = reverse_lazy('cargadiesel-list')
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['titulo'] = 'Register Diesel Load'
+        context['titulo'] = 'Carga de diesel'
         return context
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -509,7 +509,7 @@ class CargaDieselUpdateView(AdminRequiredMixin, UpdateView):
     success_url = reverse_lazy('cargadiesel-list')
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['titulo'] = f"Edit Diesel Load from {self.object.fecha.strftime('%d/%m/%Y')}"
+        context['titulo'] = f"Edicion Diesel {self.object.fecha.strftime('%d/%m/%Y')}"
         return context
     
 class CargaDieselDeleteView(AdminRequiredMixin, DeleteView):
@@ -562,7 +562,7 @@ class CargaAceiteCreateView(AdminRequiredMixin, CreateView):
     success_url = reverse_lazy('cargaaceite-list')
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['titulo'] = 'Register Oil Load'
+        context['titulo'] = 'Registrar Carga de Aceite'
         return context
 
 class CargaAceiteUpdateView(AdminRequiredMixin, UpdateView):
@@ -572,7 +572,7 @@ class CargaAceiteUpdateView(AdminRequiredMixin, UpdateView):
     success_url = reverse_lazy('cargaaceite-list')
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['titulo'] = f"Edit Oil Load from {self.object.fecha.strftime('%d/%m/%Y')}"
+        context['titulo'] = f"Editar Aceite {self.object.fecha.strftime('%d/%m/%Y')}"
         return context
 
 class CargaAceiteDeleteView(AdminRequiredMixin, DeleteView):
@@ -623,7 +623,7 @@ class CargaUreaCreateView(AdminRequiredMixin, CreateView):
     success_url = reverse_lazy('cargaurea-list')
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['titulo'] = 'Register Urea Load'
+        context['titulo'] = 'Registrar Carga de Urea'
         return context
 
 class CargaUreaUpdateView(AdminRequiredMixin, UpdateView):

@@ -2,73 +2,120 @@
 {% load widget_tweaks %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid py-3 py-md-4">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h4 class="m-0 font-weight-bold text-primary">{{ titulo }}</h4>
+        <div class="col-12 col-lg-10 col-xl-9">
+            <div class="card shadow-lg border-0 rounded-3 overflow-hidden">
+                <div class="card-header bg-primary text-white py-3 position-relative">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-white bg-opacity-20 rounded-circle p-2 me-3">
+                            <i class="fas fa-edit text-primary"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h4 class="m-0 fw-bold">{{ titulo }}</h4>
+                            <small class="opacity-75">Complete todos los campos requeridos</small>
+                        </div>
+                    </div>
+                    <div class="position-absolute top-0 end-0 mt-2 me-3">
+                        <span class="badge bg-light text-primary fs-6">Unidad</span>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form method="post" novalidate enctype="multipart/form-data">
+                
+                <div class="card-body p-3 p-md-4">
+                    <form method="post" novalidate enctype="multipart/form-data" class="needs-validation" novalidate>
                         {% csrf_token %}
 
-                        {# Los errores generales ahora están aquí arriba para máxima visibilidad #}
                         {% if form.non_field_errors %}
-                            <div class="alert alert-danger">
-                                <strong>Por favor, corrige los siguientes errores:</strong>
-                                {% for error in form.non_field_errors %}
-                                    <p class="mb-0">{{ error }}</p>
-                                {% endfor %}
+                            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <div>
+                                    {% for error in form.non_field_errors %}<p class="mb-0">{{ error }}</p>{% endfor %}
+                                </div>
                             </div>
                         {% endif %}
                         
-                        {% for hidden_field in form.hidden_fields %}
-                            {{ hidden_field }}
-                        {% endfor %}
+                        {% for hidden_field in form.hidden_fields %}{{ hidden_field }}{% endfor %}
 
-                        <div class="row">
-                        {% for field in form.visible_fields %}
-                            <div class="col-md-6 mb-4" id="div_{{ field.auto_id }}">
-                                <label for="{{ field.id_for_label }}" class="form-label font-weight-bold">{{ field.label }}</label>
-                                
-                                {# --- MEJORA: Se añade la clase 'is-invalid' si el campo tiene errores --- #}
-                                {% if field.field.disabled %}
-                                    {% render_field field class="form-control-plaintext" readonly=True %}
-                                {% else %}
-                                    {% if field.errors %}
-                                        {% render_field field class="form-control is-invalid" %}
-                                    {% else %}
-                                        {% render_field field class="form-control" %}
-                                    {% endif %}
-                                {% endif %}
-                                
-                                {% if field.help_text %}
-                                    <small class="form-text text-muted">{{ field.help_text }}</small>
-                                {% endif %}
-
-                                {# El bloque de errores para cada campo se mantiene igual #}
-                                {% for error in field.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                        {% endfor %}
-                        </div>
-                        
-                        <div class="d-flex justify-content-end border-top pt-3 mt-3">
-                            {# --- MEJORA: El botón de cancelar ahora es dinámico --- #}
-                            {% if url_cancelar %}
-                                <a href="{{ url_cancelar }}" class="btn btn-danger me-2">Cancelar</a>
-                            {% else %}
-                                <a href="{% url 'home' %}" class="btn btn-secondary me-2">Cancelar</a>
+                        <div class="row g-3 g-md-4">
+                            {% for field in form.visible_fields %}
+                            
+                            {# --- LÓGICA DE SECCIONAMIENTO VISUAL --- #}
+                            {% if field.name == 'nombre' %}
+                                <div class="col-12">
+                                    <div class="section-header mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="section-icon me-2">
+                                                <i class="fas fa-truck"></i>
+                                            </div>
+                                            <h5 class="text-primary fw-bold m-0">Información de la Unidad</h5>
+                                        </div>
+                                        <div class="section-divider mt-2"></div>
+                                    </div>
+                                </div>
                             {% endif %}
                             
-                            <button type="submit" class="btn btn-success">
-                                {% if 'Urea' in titulo or 'Finalizar' in titulo %}
-                                    Finalizar Proceso <i class="fas fa-check-circle ms-2"></i>
-                                {% else %}
-                                    Siguiente <i class="fas fa-arrow-right ms-2"></i>
+                            {% if field.name == 'tipo_combustible' %}
+                                <div class="col-12">
+                                    <div class="section-header mb-3 mt-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="section-icon me-2">
+                                                <i class="fas fa-cogs"></i>
+                                            </div>
+                                            <h5 class="text-primary fw-bold m-0">Motor y Combustible</h5>
+                                        </div>
+                                        <div class="section-divider mt-2"></div>
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if field.name == 'thermo_marca' %}
+                                <div class="col-12" data-section-wrapper="thermo">
+                                    <div class="section-header mb-3 mt-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="section-icon me-2">
+                                                <i class="fas fa-thermometer-half"></i>
+                                            </div>
+                                            <h5 class="text-primary fw-bold m-0">Información del Thermo</h5>
+                                        </div>
+                                        <div class="section-divider mt-2"></div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            {# --- FIN DE LÓGICA DE SECCIONAMIENTO --- #}
+
+                            <div class="col-12 col-md-6 mb-3" data-field-wrapper-for="{{ field.name }}">
+                                <div class="form-floating">
+                                    {% if field.field.disabled %}
+                                        {% render_field field class="form-control-plaintext bg-light px-3 py-2 rounded" readonly=True placeholder=field.label %}
+                                    {% else %}
+                                        {% with field_class=field.field.widget.attrs.class|default:"form-control" %}
+                                            {% render_field field class=field_class placeholder=field.label %}
+                                        {% endwith %}
+                                    {% endif %}
+                                    <label for="{{ field.id_for_label }}" class="fw-semibold">{{ field.label }}</label>
+                                </div>
+                                
+                                {% if field.help_text %}
+                                    <small class="form-text text-muted d-block mt-1 ps-1">
+                                        <i class="fas fa-info-circle me-1"></i>{{ field.help_text }}
+                                    </small>
                                 {% endif %}
+
+                                {% for error in field.errors %}
+                                    <div class="invalid-feedback d-flex align-items-center mt-1">
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="d-flex flex-column flex-sm-row justify-content-end border-top pt-4 mt-4 gap-2">
+                            <a href="{% url 'unidad-list' %}" class="btn btn-outline-danger btn-lg flex-fill flex-sm-grow-0 order-2 order-sm-1">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg flex-fill flex-sm-grow-0 px-4 order-1 order-sm-2">
+                                <i class="fas fa-save me-2"></i>Guardar Cambios
                             </button>
                         </div>
                     </form>
@@ -80,65 +127,200 @@
 {% endblock %}
 
 {% block extra_js %}
-{# El bloque de Javascript se mantiene exactamente igual, ya está bien hecho. #}
+<style>
+    /* Estilos generales mejorados */
+    .card {
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08) !important;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .card-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .section-header {
+        position: relative;
+    }
+    
+    .section-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(13, 110, 253, 0.1);
+        border-radius: 8px;
+        color: #0d6efd;
+    }
+    
+    .section-divider {
+        height: 2px;
+        background: linear-gradient(90deg, #0d6efd 0%, rgba(13, 110, 253, 0.2) 100%);
+        border-radius: 2px;
+    }
+    
+    /* Mejoras para campos de formulario */
+    .form-floating > .form-control:focus,
+    .form-floating > .form-control:not(:placeholder-shown) {
+        padding-top: 1.625rem;
+        padding-bottom: 0.625rem;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        transition: all 0.2s ease-in-out;
+        padding: 0.75rem 1rem;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    /* Transiciones para campos que se ocultan/muestran */
+    [data-field-wrapper-for], [data-section-wrapper] {
+        transition: all 0.4s ease-in-out;
+        overflow: hidden;
+    }
+    
+    .field-hidden {
+        max-height: 0 !important;
+        opacity: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        transform: scale(0.95);
+    }
+    
+    /* Botones mejorados */
+    .btn {
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .btn-lg {
+        padding: 0.875rem 1.75rem;
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #198754, #157347);
+        border: none;
+    }
+    
+    .btn-success:hover {
+        background: linear-gradient(135deg, #157347, #13653f);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(25, 135, 84, 0.3);
+    }
+    
+    .btn-outline-danger {
+        border-width: 2px;
+        font-weight: 600;
+    }
+    
+    .btn-outline-danger:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+        
+        .card-body {
+            padding: 1rem !important;
+        }
+        
+        .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        
+        .section-header h5 {
+            font-size: 1.1rem;
+        }
+        
+        .form-control, .form-select {
+            padding: 0.875rem 1rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .card-header h4 {
+            font-size: 1.25rem;
+        }
+        
+        .card-header .badge {
+            font-size: 0.7rem !important;
+        }
+        
+        .section-icon {
+            width: 32px;
+            height: 32px;
+        }
+    }
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const isDieselForm = document.getElementById('id_lts_diesel') !== null;
-    if (!isDieselForm) {
-        return;
-    }
-    const unidadSelect = document.getElementById('id_unidad');
-    const ltsThermoContainer = document.getElementById('div_id_lts_thermo');
-    const hrsThermoContainer = document.getElementById('div_id_hrs_thermo');
-
-    if (!unidadSelect || !ltsThermoContainer || !hrsThermoContainer) {
-        return;
-    }
-
-    function toggleThermoFields(unidadId) {
-        if (!unidadId) {
-            ltsThermoContainer.style.display = 'none';
-            hrsThermoContainer.style.display = 'none';
-            return;
+    
+    const toggleElementVisibility = (selector, show) => {
+        const element = document.querySelector(selector);
+        if (element) {
+            if (show) {
+                element.classList.remove('field-hidden');
+            } else {
+                element.classList.add('field-hidden');
+            }
         }
+    };
 
-        fetch(`/api/get-unidad-tipo/?unidad_id=${unidadId}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.tipo === 'S') {
-                    ltsThermoContainer.style.display = 'none';
-                    hrsThermoContainer.style.display = 'none';
-                    const ltsThermoInput = document.getElementById('id_lts_thermo');
-                    const hrsThermoInput = document.getElementById('id_hrs_thermo');
-                    if(ltsThermoInput) ltsThermoInput.value = '';
-                    if(hrsThermoInput) hrsThermoInput.value = '';
-                } else {
-                    ltsThermoContainer.style.display = '';
-                    hrsThermoContainer.style.display = '';
-                }
-            })
-            .catch(error => {
-                console.error('Error al obtener el tipo de unidad:', error);
-                ltsThermoContainer.style.display = 'none';
-                hrsThermoContainer.style.display = 'none';
-            });
-    }
+    const initUnidadForm = () => {
+        const tipoUnidadSelect = document.getElementById('id_tipo_unidad');
+        const combustibleCompartidoSelect = document.querySelector('[name="combustible_compartido"]');
+        
+        if (!tipoUnidadSelect || !combustibleCompartidoSelect) return;
 
-    if (unidadSelect.value) {
-        toggleThermoFields(unidadSelect.value);
-    } else {
-        ltsThermoContainer.style.display = 'none';
-        hrsThermoContainer.style.display = 'none';
-    }
+        // Campos descriptivos de thermo (los que no son el tanque)
+        const camposThermoDescriptivos = [
+            'thermo_marca', 'thermo_serie', 'thermo_modelo', 'thermo_tipo_cierre'
+        ];
 
-    unidadSelect.addEventListener('change', function() {
-        toggleThermoFields(this.value);
-    });
+        const actualizarVisibilidad = () => {
+            const tipo = tipoUnidadSelect.value;
+            const esCompartido = combustibleCompartidoSelect.value === 'True';
+            const esRefrigerada = (tipo === 'R' || tipo === 'A');
+
+            // 1. Mostrar/Ocultar la sección del Thermo (Marca, Serie, etc.)
+            toggleElementVisibility('[data-section-wrapper="thermo"]', esRefrigerada);
+            camposThermoDescriptivos.forEach(field => toggleElementVisibility(`[data-field-wrapper-for="${field}"]`, esRefrigerada));
+
+            // 2. Lógica de los tanques de combustible (Ahora depende SÓLO de 'esCompartido')
+            toggleElementVisibility('[data-field-wrapper-for="capacidad_total_tanque"]', esCompartido);
+            toggleElementVisibility('[data-field-wrapper-for="total_tanque_diesel_motor"]', !esCompartido);
+            
+            // La visibilidad del tanque de thermo ahora solo depende de si es NO compartido.
+            toggleElementVisibility('[data-field-wrapper-for="total_tanque_diesel_thermo"]', !esCompartido);
+        };
+
+        tipoUnidadSelect.addEventListener('change', actualizarVisibilidad);
+        combustibleCompartidoSelect.addEventListener('change', actualizarVisibilidad);
+        
+        actualizarVisibilidad(); // Ejecutar al cargar la página
+    };
+
+    initUnidadForm();
 });
 </script>
 {% endblock %}

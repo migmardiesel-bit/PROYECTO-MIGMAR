@@ -12,10 +12,91 @@ from django.forms import BaseFormSet
 from django.db.models import Sum, Q  # <--- MODIFICA ESTA LÍNEA (AÑADE LA Q)
 from django.contrib.auth.models import User, Group # <-- Añadir Group
 from .models import ChecklistCorreccion # <-- Asegúrate de importar tu nuevo modelo
+
 class UnidadForm(forms.ModelForm):
+    
+    combustible_compartido = forms.ChoiceField(
+        choices=[('False', 'No'), ('True', 'Sí')],
+        label="Tanque de Combustible Compartido",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        required=False
+    )
+
     class Meta:
         model = Unidad
         fields = '__all__'
+        
+        widgets = {
+            # --- Widgets para los nuevos campos ---
+            'unidad_negocio': forms.Select(attrs={'class': 'form-select'}),
+            'tipo_combustible': forms.Select(attrs={'class': 'form-select'}),
+            'cantidad_cilindros': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 6'}),
+            
+            # --- Widgets existentes con IDs para JS ---
+            'tipo': forms.Select(attrs={'class': 'form-select', 'id': 'id_tipo_unidad'}),
+            'tamano_caja_pies': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 53'}),
+            'thermo_tipo_cierre': forms.Select(attrs={'class': 'form-select'}),
+            'capacidad_total_tanque': forms.NumberInput(attrs={'class': 'form-control'}),
+            'total_tanque_diesel_motor': forms.NumberInput(attrs={'class': 'form-control'}),
+            'total_tanque_diesel_thermo': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Lógica para manejar el campo Booleano/ChoiceField
+        if self.instance and self.instance.pk:
+            self.fields['combustible_compartido'].initial = str(self.instance.combustible_compartido)
+        else:
+            self.fields['combustible_compartido'].initial = 'False'
+            
+        # --- INICIO DE LA CORRECCIÓN ---
+        # Asigna una clase CSS solo a los campos descriptivos de thermo
+        # para controlarlos en grupo con JS.
+        # EXCLUIMOS 'total_tanque_diesel_thermo' de esta lista.
+        thermo_fields_descriptivos = [
+            'thermo_marca', 'thermo_serie', 'thermo_modelo', 
+            'thermo_tipo_cierre' 
+        ]
+        
+        for field_name in thermo_fields_descriptivos:
+            if field_name in self.fields:
+                # Usamos una clase CSS específica para este grupo
+                self.fields[field_name].widget.attrs['class'] = self.fields[field_name].widget.attrs.get('class', '') + ' campo-thermo-descriptivo'
+        # --- FIN DE LA CORRECCIÓN ---
+
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        # Convertir el string 'True'/'False' de vuelta a un Booleano
+        is_compartido = cleaned_data.get('combustible_compartido') == 'True'
+        cleaned_data['combustible_compartido'] = is_compartido
+        
+        capacidad_total = cleaned_data.get('capacidad_total_tanque')
+        tanque_motor = cleaned_data.get('total_tanque_diesel_motor')
+        tanque_thermo = cleaned_data.get('total_tanque_diesel_thermo')
+        tipo_unidad = cleaned_data.get('tipo')
+
+        if is_compartido:
+            # Si es compartido, 'capacidad_total' es requerido y los otros deben estar vacíos.
+            if not capacidad_total or capacidad_total <= 0:
+                self.add_error('capacidad_total_tanque', 'Este campo es requerido si el combustible es compartido.')
+            cleaned_data['total_tanque_diesel_motor'] = None
+            cleaned_data['total_tanque_diesel_thermo'] = None
+        
+        else: # Si NO es compartido
+            cleaned_data['capacidad_total_tanque'] = None
+            if not tanque_motor or tanque_motor <= 0:
+                 self.add_error('total_tanque_diesel_motor', 'Este campo es requerido si el combustible NO es compartido.')
+            
+            # El tanque de thermo solo es requerido si la unidad es Refrigerada
+            if tipo_unidad != 'S':
+                if not tanque_thermo or tanque_thermo <= 0:
+                    self.add_error('total_tanque_diesel_thermo', 'Este campo es requerido para unidades refrigeradas si el combustible NO es compartido.')
+            else:
+                cleaned_data['total_tanque_diesel_thermo'] = None
+        
+        return cleaned_data
 
 class OperadorForm(forms.ModelForm):
     class Meta:

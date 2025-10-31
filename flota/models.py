@@ -22,9 +22,23 @@ class Operador(models.Model):
         return reverse('operador-update', kwargs={'pk': self.pk})
 
 class Unidad(models.Model):
+    # ===================================================================
+    # --- SECCIÓN: DATOS GENERALES DE LA UNIDAD ---
+    # ===================================================================
     nombre = models.CharField(max_length=100, verbose_name="Nombre o Alias de la Unidad", unique=True)
+    
+    UNIDAD_NEGOCIO_CHOICES = [
+        ('WALMART', 'Walmart'),
+        ('AUTOZONE', 'Autozone'),
+        ('MARCO_MORALES', 'Marco Morales'),
+    ]
+    unidad_negocio = models.CharField(
+        max_length=20, choices=UNIDAD_NEGOCIO_CHOICES, 
+        verbose_name="Unidad de Negocio", blank=True, null=True
+    )
+    
     TIPO_CHOICES = [('S', 'Seca'), ('R', 'Refrigerada'), ('A', 'Refrigerada/Seca')]    
-    tipo = models.CharField(max_length=1, choices=TIPO_CHOICES, default='S')
+    tipo = models.CharField(max_length=1, choices=TIPO_CHOICES, default='S', verbose_name="Tipo de Unidad")
     marca = models.CharField(max_length=50, blank=True, null=True)
     modelo = models.CharField(max_length=50, blank=True, null=True)
     placas = models.CharField(max_length=20, blank=True, null=True)
@@ -32,10 +46,55 @@ class Unidad(models.Model):
     poliza = models.CharField(max_length=100, blank=True, null=True)
     tag = models.CharField(max_length=50, blank=True, null=True, verbose_name="TAG IAVE")
     km_actual = models.PositiveIntegerField(default=0, verbose_name="Kilometraje Actual")
+    tamano_caja_pies = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Tamaño de Caja (Pies)"
+    )
 
-    # ========= ASEGÚRATE QUE ESTA LÍNEA ESTÉ AQUÍ =========
+    # ===================================================================
+    # --- SECCIÓN: DATOS DE MOTOR Y COMBUSTIBLE ---
+    # ===================================================================
+    TIPO_COMBUSTIBLE_CHOICES = [('DIESEL', 'Diésel'), ('GASOLINA', 'Gasolina')]
+    tipo_combustible = models.CharField(
+        max_length=10, choices=TIPO_COMBUSTIBLE_CHOICES, 
+        default='DIESEL', verbose_name="Tipo de Combustible"
+    )
+    cantidad_cilindros = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Cantidad de Cilindros"
+    )
+
+    combustible_compartido = models.BooleanField(default=False, verbose_name="Tanque de Combustible Compartido")
+    
+    capacidad_total_tanque = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, 
+        verbose_name="Capacidad Total Tanque (Si es Compartido)",
+        help_text="Usar solo si el combustible es compartido."
+    )
+    total_tanque_diesel_motor = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, 
+        verbose_name="Total Tanque Diésel Motor",
+        help_text="Usar solo si NO es compartido."
+    )
+
+    # ===================================================================
+    # --- SECCIÓN: DATOS DEL THERMO (PARA UNIDADES REFRIGERADAS) ---
+    # ===================================================================
+    thermo_marca = models.CharField(max_length=100, blank=True, null=True, verbose_name="Thermo: Marca")
+    thermo_serie = models.CharField(max_length=100, blank=True, null=True, verbose_name="Thermo: Serie")
+    thermo_modelo = models.CharField(max_length=100, blank=True, null=True, verbose_name="Thermo: Modelo")
+    
+    TIPO_CIERRE_CHOICES = [('PUERTA', 'Puerta'), ('CORTINA', 'Cortina')]
+    thermo_tipo_cierre = models.CharField(
+        max_length=10, choices=TIPO_CIERRE_CHOICES, blank=True, null=True, 
+        verbose_name="Thermo: Tipo de Cierre"
+    )
+    
+    total_tanque_diesel_thermo = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True, 
+        verbose_name="Total Tanque Diésel Thermo",
+        help_text="Usar solo si NO es compartido."
+    )
+    
     ultima_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Última Actualización")
-    # ======================================================
 
     def __str__(self):
         return self.nombre

@@ -1,114 +1,206 @@
 {% extends 'base.html' %}
+{% load widget_tweaks %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="card">
-        <div class="card-header">
-            <h3>{{ titulo }}</h3>
-        </div>
-        <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
-                {{ formset.management_form }}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-9 col-xl-8">
+            <div class="card shadow-lg border-0 rounded-lg">
+                <div class="card-header bg-primary text-white py-3">
+                    <h4 class="m-0 font-weight-bold"><i class="fas fa-edit me-2"></i>{{ titulo }}</h4>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" novalidate enctype="multipart/form-data">
+                        {% csrf_token %}
 
-                <div class="row mb-4">
-                    <div class="col-md-6 mb-3 mb-md-0">
-                        <label for="{{ km_form.km.id_for_label }}" class="form-label fw-bold">Kilometraje</label>
-                        {{ km_form.km }}
-                        
-                        {# --- LÍNEA AÑADIDA --- #}
-                        <div class="form-text">Último KM registrado: <strong>{{ unidad.km_actual }} km</strong></div>
-
-                        {% if km_form.km.errors %}
-                            <div class="invalid-feedback d-block">
-                                {{ km_form.km.errors.as_text }}
+                        {# --- Errores Globales del Formulario --- #}
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger" role="alert">
+                                <h5 class="alert-heading">¡Error!</h5>
+                                {% for error in form.non_field_errors %}
+                                    <p class="mb-0">{{ error }}</p>
+                                {% endfor %}
                             </div>
                         {% endif %}
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Fecha</label>
-                        <input type="text" class="form-control-plaintext" value="{{ fecha_actual|date:"d/m/Y" }}" readonly>
-                    </div>
-                </div>
+                        
+                        {# --- Campos Ocultos --- #}
+                        {% for hidden_field in form.hidden_fields %}{{ hidden_field }}{% endfor %}
 
-                <div class="table-responsive d-none d-lg-block">
-                    <table class="table table-bordered table-sm align-middle">
-                        <thead class="table-light text-center">
-                            <tr>
-                                <th style="width: 25%;">Posición</th>
-                                <th style="width: 10%;">MM</th>
-                                <th style="width: 20%;">Marca</th>
-                                <th style="width: 20%;">Modelo</th>
-                                <th style="width: 15%;">Medida</th>
-                                <th style="width: 10%;">Presión (PSI)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for form in formset %}
-                            <tr>
-                                <td>{{ form.posicion }}</td>
-                                <td>{{ form.mm }}{% for error in form.mm.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}</td>
-                                <td>{{ form.marca }}{% for error in form.marca.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}</td>
-                                <td>{{ form.modelo }}{% for error in form.modelo.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}</td>
-                                <td>{{ form.medida }}{% for error in form.medida.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}</td>
-                                <td>{{ form.presion }}{% for error in form.presion.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}</td>
-                                </tr>
+                        {# --- Renderizado de Campos Visibles --- #}
+                        <div class="row gx-4">
+                            {% for field in form.visible_fields %}
+                            {# El data-field-wrapper permite al JS identificar y controlar este contenedor #}
+                            <div class="col-md-6 mb-4" data-field-wrapper-for="{{ field.name }}">
+                                <label for="{{ field.id_for_label }}" class="form-label fw-bold">{{ field.label }}</label>
+                                
+                                {% if field.field.disabled %}
+                                    {% render_field field class="form-control-plaintext bg-light px-2 rounded" readonly=True %}
+                                {% else %}
+                                    {% if field.errors %}
+                                        {% render_field field class="form-control is-invalid" aria-describedby=field.auto_id|add:"_error" %}
+                                    {% else %}
+                                        {% render_field field class="form-control" %}
+                                    {% endif %}
+                                {% endif %}
+                                
+                                {% if field.help_text %}
+                                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                                {% endif %}
+
+                                {% for error in field.errors %}
+                                    <div id="{{ field.auto_id }}_error" class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
                             {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="d-lg-none">
-                    {% for form in formset %}
-                    <div class="card mb-3 {% if form.errors %}border-danger{% endif %}">
-                        <div class="card-header fw-bold">
-                           {{ form.posicion.value }}
                         </div>
-                        <div class="card-body">
-                            <div class="d-none">{{ form.posicion }}</div>
-                            <div class="mb-2">
-                                <label for="{{ form.mm.id_for_label }}" class="form-label small mb-0">{{ form.mm.label }}</label>
-                                {{ form.mm }}
-                                {% for error in form.mm.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}
-                            </div>
-                            <div class="mb-2">
-                                <label for="{{ form.marca.id_for_label }}" class="form-label small mb-0">{{ form.marca.label }}</label>
-                                {{ form.marca }}
-                                {% for error in form.marca.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}
-                            </div>
-                            <div class="mb-2">
-                                <label for="{{ form.modelo.id_for_label }}" class="form-label small mb-0">{{ form.modelo.label }}</label>
-                                {{ form.modelo }}
-                                {% for error in form.modelo.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}
-                            </div>
-                            <div class="mb-2">
-                                <label for="{{ form.medida.id_for_label }}" class="form-label small mb-0">{{ form.medida.label }}</label>
-                                {{ form.medida }}
-                                {% for error in form.medida.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}
-                            </div>
-                             <div class="mb-2">
-                                <label for="{{ form.presion.id_for_label }}" class="form-label small mb-0">{{ form.presion.label }}</label>
-                                {{ form.presion }}
-                                {% for error in form.presion.errors %}<div class="invalid-feedback d-block">{{error}}</div>{% endfor %}
-                            </div>
-                            </div>
-                    </div>
-                    {% endfor %}
+                        
+                        {# --- Acciones del Formulario --- #}
+                        <div class="d-flex justify-content-end border-top pt-3 mt-4">
+                            {% if url_cancelar %}
+                                <a href="{{ url_cancelar }}" class="btn btn-outline-danger me-2">
+                                    <i class="fas fa-times me-2"></i>Cancelar
+                                </a>
+                            {% else %}
+                                <a href="{% url 'home' %}" class="btn btn-outline-secondary me-2">
+                                    <i class="fas fa-arrow-left me-2"></i>Volver
+                                </a>
+                            {% endif %}
+                            
+                            <button type="submit" class="btn btn-success px-4">
+                                {% if 'Urea' in titulo or 'Finalizar' in titulo %}
+                                    <i class="fas fa-check-circle me-2"></i>Finalizar Proceso
+                                {% elif 'Unidad' in titulo or 'Operador' in titulo %}
+                                    <i class="fas fa-save me-2"></i>Guardar Cambios
+                                {% else %}
+                                    Siguiente<i class="fas fa-arrow-right ms-2"></i>
+                                {% endif %}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                {% if formset.non_form_errors %}
-                    <div class="alert alert-danger mt-3">
-                        {{ formset.non_form_errors }}
-                    </div>
-                {% endif %}
-
-                <hr>
-                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                    <a href="{% url 'tecnico-seleccionar-unidad' %}" class="btn btn-secondary">Cancelar</a>
-                    <button type="submit" class="btn btn-primary">Siguiente: Carga de Diésel</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{# ================================================================== #}
+{# ===        BLOQUE DE JAVASCRIPT PROFESIONALIZADO             === #}
+{# ================================================================== #}
+<style>
+    /* Estilo para transiciones suaves al mostrar/ocultar campos */
+    [data-field-wrapper-for] {
+        transition: opacity 0.3s ease-in-out, max-height 0.3s ease-in-out;
+        overflow: hidden;
+        max-height: 200px; /* Altura suficiente para un campo de formulario */
+        opacity: 1;
+    }
+    [data-field-wrapper-for][hidden] {
+        max-height: 0;
+        opacity: 0;
+        margin-bottom: 0 !important; /* Evita espacios extra al ocultar */
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    /**
+     * Muestra u oculta un elemento de formulario (el div contenedor).
+     * @param {string} fieldName - El atributo 'name' del campo del formulario.
+     * @param {boolean} show - True para mostrar, false para ocultar.
+     */
+    const toggleField = (fieldName, show) => {
+        const wrapper = document.querySelector(`[data-field-wrapper-for="${fieldName}"]`);
+        if (wrapper) {
+            if (show) {
+                wrapper.removeAttribute('hidden');
+            } else {
+                wrapper.setAttribute('hidden', true);
+            }
+        }
+    };
+
+    // ==================================================================
+    // MÓDULO: Lógica del Formulario de UNIDADES
+    // ==================================================================
+    const initUnidadForm = () => {
+        const tipoUnidadSelect = document.getElementById('id_tipo_unidad');
+        const combustibleCompartidoSelect = document.getElementById('id_combustible_compartido');
+        
+        if (!tipoUnidadSelect || !combustibleCompartidoSelect) return;
+
+        const camposThermo = [
+            'thermo_marca', 'thermo_serie', 'thermo_modelo', 
+            'thermo_tipo_cierre', 'total_tanque_diesel_thermo'
+        ];
+
+        const actualizarVisibilidad = () => {
+            const tipo = tipoUnidadSelect.value;
+            const esCompartido = combustibleCompartidoSelect.value === 'True';
+            const esRefrigerada = (tipo === 'R' || tipo === 'A');
+
+            // Lógica 1: Campos de Thermo (Marca, Serie, etc.)
+            camposThermo.forEach(field => toggleField(field, esRefrigerada));
+
+            // Lógica 2: Campos de capacidad de tanques
+            toggleField('capacidad_total_tanque', esCompartido);
+            toggleField('total_tanque_diesel_motor', !esCompartido);
+            
+            // El campo de tanque de thermo (individual) solo es visible si
+            // la unidad es refrigerada Y el combustible NO es compartido.
+            toggleField('total_tanque_diesel_thermo', esRefrigerada && !esCompartido);
+        };
+
+        tipoUnidadSelect.addEventListener('change', actualizarVisibilidad);
+        combustibleCompartidoSelect.addEventListener('change', actualizarVisibilidad);
+        
+        actualizarVisibilidad(); // Estado inicial al cargar
+    };
+
+    // ==================================================================
+    // MÓDULO: Lógica del Formulario de CARGA DE DIÉSEL
+    // ==================================================================
+    const initDieselForm = () => {
+        const unidadSelect = document.getElementById('id_unidad');
+        if (!unidadSelect || !document.querySelector('[data-field-wrapper-for="lts_thermo"]')) return;
+
+        const toggleThermoFields = (unidadId) => {
+            if (!unidadId) {
+                toggleField('lts_thermo', false);
+                toggleField('hrs_thermo', false);
+                return;
+            }
+
+            fetch(`/api/get-unidad-tipo/?unidad_id=${unidadId}`)
+                .then(response => response.ok ? response.json() : Promise.reject('API Error'))
+                .then(data => {
+                    const show = data.tipo !== 'S';
+                    toggleField('lts_thermo', show);
+                    toggleField('hrs_thermo', show);
+                    if (!show) {
+                        document.getElementById('id_lts_thermo')?.setAttribute('value', '');
+                        document.getElementById('id_hrs_thermo')?.setAttribute('value', '');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al obtener tipo de unidad:', error);
+                    toggleField('lts_thermo', false);
+                    toggleField('hrs_thermo', false);
+                });
+        };
+
+        unidadSelect.addEventListener('change', () => toggleThermoFields(unidadSelect.value));
+        toggleThermoFields(unidadSelect.value); // Estado inicial
+    };
+
+    // --- Inicializadores ---
+    // Se ejecutan las funciones correspondientes según el formulario presente.
+    initUnidadForm();
+    initDieselForm();
+});
+</script>
 {% endblock %}
