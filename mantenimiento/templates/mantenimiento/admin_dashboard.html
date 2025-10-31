@@ -8,7 +8,6 @@
         <a href="{% url 'mantenimiento:asignar_tarea' %}" class="btn btn-primary">Asignar Nueva Tarea</a>
     </div>
 
-    <!-- Opcional: Enlaces a los Catálogos -->
     <div class="mb-3">
         <a href="{% url 'mantenimiento:herramienta_list' %}" class="btn btn-outline-secondary btn-sm">Gestionar Herramientas</a>
         <a href="{% url 'mantenimiento:correctivo_list' %}" class="btn btn-outline-secondary btn-sm">Gestionar Tareas Correctivas</a>
@@ -58,7 +57,13 @@
                                 <a href="{% url 'mantenimiento:admin_tarea_detalle' tarea.pk %}" class="btn btn-sm btn-outline-primary">
                                     Ver Progreso
                                 </a>
-                            </td>
+                                
+                                {% if tarea.status != 'COMPLETADA' %}
+                                <a href="{% url 'mantenimiento:admin_tarea_eliminar' tarea.pk %}" class="btn btn-sm btn-outline-danger ms-1">
+                                    Eliminar
+                                </a>
+                                {% endif %}
+                                </td>
                         </tr>
                         {% empty %}
                         <tr>

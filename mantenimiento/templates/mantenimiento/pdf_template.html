@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Mantenimiento - Tarea {{ tarea.id }}</title>
+    <style>
+        @page {
+            size: a4 portrait;
+            @frame header_frame {
+                -pdf-frame-content: header_content;
+                left: 50pt; width: 512pt; top: 30pt; height: 50pt;
+            }
+            @frame content_frame {
+                left: 50pt; width: 512pt; top: 90pt; height: 682pt;
+            }
+            @frame footer_frame {
+                -pdf-frame-content: footer_content;
+                left: 50pt; width: 512pt; top: 782pt; height: 20pt;
+            }
+        }
+
+        body {
+            font-family: "Helvetica", "Arial", sans-serif;
+            font-size: 10pt;
+            color: #333;
+        }
+        
+        h1 {
+            font-size: 18pt;
+            color: #111;
+            margin-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        
+        th, td {
+            border: 1px solid #aaa;
+            padding: 6px;
+            text-align: left;
+            vertical-align: top;
+        }
+        
+        th {
+            background-color: #eee;
+            font-weight: bold;
+        }
+        
+        .header {
+            text-align: center;
+        }
+
+        .footer {
+            text-align: right;
+            font-size: 9pt;
+            color: #777;
+        }
+        
+        .section-title {
+            font-size: 14pt;
+            background-color: #f0f0f0;
+            padding: 5px;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .task-details td:first-child {
+            width: 150px;
+            font-weight: bold;
+        }
+        
+        .checklist-table th:first-child { width: 40%; }
+        .checklist-table th:nth-child(2) { width: 10%; text-align: center; }
+        .checklist-table th:nth-child(3) { width: 25%; }
+        .checklist-table th:nth-child(4) { width: 25%; }
+
+        .checklist-table td {
+            vertical-align: middle;
+        }
+
+        .check-icon {
+            font-family: "DejaVu Sans", sans-serif;
+            text-align: center;
+        }
+        
+        img.evidencia {
+            max-width: 150px; /* Ajusta el tamaño de la imagen */
+            max-height: 150px;
+            display: block;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="header_content">
+        <table style="border: none;">
+            <tr>
+                <td style="border: none; width: 70%;">
+                    <span style="font-size: 16pt; font-weight: bold;">Transportes Migmar</span>
+                </td>
+                <td style="border: none; text-align: right; vertical-align: middle;">
+                    Reporte de Mantenimiento
+                </td>
+            </tr>
+        </table>
+        <hr style="border-top: 1px solid #ccc; margin: 0; padding: 0;">
+    </div>
+
+    <div id="footer_content" class="footer">
+        Página <pdf:pagenumber> de <pdf:pagecount>
+    </div>
+
+    <div class="header">
+        <h1>REPORTE DE MANTENIMIENTO: TAREA #{{ tarea.id }}</h1>
+    </div>
+
+    <div class="section-title">Detalles de la Tarea</div>
+    <table class="task-details">
+        <tr>
+            <td>ID Tarea:</td>
+            <td>{{ tarea.id }}</td>
+            <td>Estado:</td>
+            <td>{{ tarea.get_status_display }}</td>
+        </tr>
+        <tr>
+            <td>Unidad:</td>
+            <td>{{ tarea.unidad.nombre }}</td>
+            <td>Técnico:</td>
+            <td>{{ tarea.tecnico.get_full_name|default:tarea.tecnico.username }}</td>
+        </tr>
+        <tr>
+            <td>Tipo:</td>
+            <td>{{ tarea.get_tipo_mantenimiento_display }}</td>
+            <td>Prioridad:</td>
+            <td>{{ tarea.get_prioridad_display }}</td>
+        </tr>
+        {% if tarea.tipo_mantenimiento == 'CORRECTIVO' %}
+        <tr>
+            <td>Tarea Correctiva:</td>
+            <td colspan="3">{{ tarea.mantenimiento_correctivo.nombre }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <div class="section-title">Cronología</div>
+    <table class="task-details">
+        <tr>
+            <td>Asignada:</td>
+            <td>{{ tarea.fecha_asignacion|date:"d/m/Y H:i" }} (por {{ tarea.admin.username }})</td>
+        </tr>
+        <tr>
+            <td>Iniciada:</td>
+            <td>{{ tarea.fecha_inicio|date:"d/m/Y H:i"|default:"N/A" }}</td>
+        </tr>
+        <tr>
+            <td>Finalizada:</td>
+            <td>{{ tarea.fecha_fin|date:"d/m/Y H:i"|default:"N/A" }}</td>
+        </tr>
+        <tr>
+            <td>Tiempo Total:</td>
+            <td>
+                {% if tarea.status == 'COMPLETADA' %}
+                    {{ tarea.tiempo_total_minutos }} minutos
+                {% else %}
+                    (Aún en proceso)
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+    
+    {% if herramientas %}
+    <div class="section-title">Herramientas Solicitadas</div>
+    <ul>
+        {% for herram in herramientas %}
+            <li>{{ herram.nombre }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if tarea.notas_admin %}
+    <div class="section-title">Notas del Administrador</div>
+    <p>{{ tarea.notas_admin|linebreaksbr }}</p>
+    {% endif %}
+
+
+    {% if tarea.tipo_mantenimiento == 'PREVENTIVO' %}
+    <div class="section-title">Checklist de Mantenimiento Preventivo</div>
+    <table class="checklist-table">
+        <thead>
+            <tr>
+                <th>Punto de Revisión</th>
+                <th>OK</th>
+                <th>Observaciones (mm, psi, etc.)</th>
+                <th>Evidencia</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for subtask in subtasks %}
+            <tr>
+                <td>{{ subtask.get_nombre_subtask_display }}</td>
+                <td class="check-icon">
+                    {% if subtask.completada %}
+                        &#10003; 
+                    {% else %}
+                        &#10007; {% endif %}
+                </td>
+                <td>{{ subtask.observaciones|default:"-" }}</td>
+                <td>
+                    {% if subtask.foto_evidencia %}
+                        <img src="{{ subtask.foto_evidencia.path }}" class="evidencia">
+                    {% else %}
+                        Sin foto
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+</body>
+</html>

@@ -1,3 +1,5 @@
+# forms.py (Completo y Modificado)
+
 from django import forms
 from django.contrib.auth.models import User, Group
 from django.db.models import Q
@@ -37,13 +39,13 @@ class AsignarTareaForm(forms.ModelForm):
         model = TareaMantenimiento
         fields = [
             'tecnico', 'unidad', 'tipo_mantenimiento', 
-            'prioridad', # <-- AÑADIR CAMPO
+            'prioridad', 
             'mantenimiento_correctivo', 'notas_admin'
         ]
         widgets = {
             'unidad': forms.Select(attrs={'class': 'form-select'}),
             'tipo_mantenimiento': forms.Select(attrs={'class': 'form-select'}),
-            'prioridad': forms.Select(attrs={'class': 'form-select'}), # <-- AÑADIR WIDGET
+            'prioridad': forms.Select(attrs={'class': 'form-select'}), 
             'mantenimiento_correctivo': forms.Select(attrs={'class': 'form-select'}),
             'notas_admin': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
@@ -88,29 +90,63 @@ class SeleccionarHerramientasForm(forms.Form):
             self.fields['herramientas'].initial = self.tarea.herramientas_solicitadas.all()
 
 
+# --- ESTA CLASE FUE MODIFICADA ---
+
 class TareaPreventivaSubtaskForm(forms.ModelForm):
     """
     Formulario para un solo item del checklist preventivo.
     """
-    # Hacemos que la etiqueta sea el nombre de la tarea
-    completada = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}))
+    completada = forms.BooleanField(required=False, widget=forms.CheckboxInput(attrs={'class': 'form-check-input me-2'}))
     
+    observaciones = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control form-control-sm', 'rows': 2, 'placeholder': 'Notas, mm, psi...'})
+    )
+    
+    foto_evidencia = forms.ImageField(
+        required=False, # <-- Queda siempre False
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control form-control-sm'})
+    )
+
     class Meta:
         model = TareaPreventivaSubtask
-        fields = ['completada']
+        fields = ['completada', 'observaciones', 'foto_evidencia']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Usamos el "display name" de la subtask como la etiqueta del checkbox
+        
         if self.instance and self.instance.pk:
+            # Usamos el "display name" de la subtask como la etiqueta del checkbox
             self.fields['completada'].label = self.instance.get_nombre_subtask_display()
+
+            # --- LÓGICA DE VALIDACIÓN MODIFICADA (SE ELIMINÓ LA OBLIGATORIEDAD) ---
+            
+            # 1. Definimos los IDs de las tareas que SIEMPRE requieren foto
+            TAREAS_SUSPENSION = [
+                'susp_amortiguadores', 
+                'susp_bolsa_aire', 
+                'susp_bujes_muelle', 
+                'susp_bujes_tirantes'
+            ]
+            
+            # 2. Comprobamos si la instancia actual es una de ellas
+            if self.instance.nombre_subtask in TAREAS_SUSPENSION:
+                
+                # 3. YA NO HACEMOS EL CAMPO DE FOTO OBLIGATORIO.
+                # Se eliminó la línea: self.fields['foto_evidencia'].required = True
+                
+                # Opcional: añadimos un indicador visual a la etiqueta (ya no será "Requerido" si no es obligatorio)
+                self.fields['foto_evidencia'].label = "Foto de Evidencia"
+            
+            # --- FIN DE LÓGICA DE VALIDACIÓN MODIFICADA ----
+
 
 # Creamos un FormSet para el checklist preventivo
 TareaPreventivaFormSet = forms.inlineformset_factory(
     TareaMantenimiento,
     TareaPreventivaSubtask,
     form=TareaPreventivaSubtaskForm,
-    fields=('completada',),
-    extra=0, # No permitir añadir nuevas (ya están pre-cargadas)
+    fields=('completada', 'observaciones', 'foto_evidencia'),
+    extra=0, 
     can_delete=False
 )

@@ -1,3 +1,5 @@
+# urls.py (Completo)
+
 from django.urls import path
 from . import views
 
@@ -18,6 +20,9 @@ urlpatterns = [
     path('tecnico/tarea/<int:pk>/iniciar/', views.iniciar_tarea, name='iniciar_tarea'),
     path('tecnico/tarea/<int:pk>/finalizar/', views.finalizar_tarea, name='finalizar_tarea'),
     path('tecnico/tarea/<int:pk>/guardar-progreso/', views.guardar_progreso_preventivo, name='guardar_progreso_preventivo'),
+    
+    # --- NUEVA RUTA PARA PDF ---
+    path('tecnico/tarea/<int:pk>/generar-pdf/', views.generar_pdf_mantenimiento, name='generar_pdf'),
 
     # --- URLs de Catálogo de Herramientas (Admin) ---
     path('admin/herramientas/', views.CatalogoHerramientaListView.as_view(), name='herramienta_list'),
@@ -30,4 +35,5 @@ urlpatterns = [
     path('admin/correctivo/nueva/', views.CatalogoCorrectivoCreateView.as_view(), name='correctivo_crear'),
     path('admin/correctivo/<int:pk>/editar/', views.CatalogoCorrectivoUpdateView.as_view(), name='correctivo_editar'),
     path('admin/correctivo/<int:pk>/eliminar/', views.CatalogoCorrectivoDeleteView.as_view(), name='correctivo_eliminar'),
+    path('admin/tarea/<int:pk>/eliminar/', views.TareaMantenimientoDeleteView.as_view(), name='admin_tarea_eliminar'),
 ]

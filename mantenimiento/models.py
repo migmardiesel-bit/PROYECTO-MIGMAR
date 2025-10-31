@@ -1,8 +1,11 @@
+# models.py (Completo)
+
 from django.db import models
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from django.db.models import Q
 from django.urls import reverse
+import os # <-- Importante para las fotos
 
 # Importamos el modelo Unidad de tu app 'flota'
 # Asegúrate de que el nombre 'flota' coincida con tu app existente.
@@ -145,20 +148,50 @@ class TareaMantenimiento(models.Model):
             self.tiempo_total_minutos = 0
 
 
+# --- CAMBIOS AQUÍ ---
+
+def ruta_evidencia_subtask(instance, filename):
+    """
+    Genera la ruta de guardado para la foto de evidencia.
+    Ej: media/mantenimiento/tarea_10/subtask_5_foto.jpg
+    """
+    tarea_id = instance.tarea_principal.id
+    subtask_id = instance.id
+    # Obtenemos la extensión del archivo
+    extension = os.path.splitext(filename)[1]
+    return f'mantenimiento/tarea_{tarea_id}/subtask_{subtask_id}{extension}'
+
+
 class TareaPreventivaSubtask(models.Model):
     """
     Almacena el estado de las sub-tareas fijas para un mantenimiento preventivo.
     """
+    # --- LISTA ACTUALIZADA Y CORREGIDA ---
+    # (Corregí los typos "suscepción" y "revisor")
     TAREAS_PREVENTIVAS_CHOICES = [
-        ('cambio_aceite', 'Cambio de aceite'),
-        ('cambio_filtros', 'Cambio de filtros'),
-        ('revision_general', 'Revisión general'),
-        ('niveles', 'Niveles'),
-        ('diferenciales', 'Diferenciales'),
-        ('buges', 'Buges'),
-        ('direccion', 'Dirección'),
-        ('fugas_aire', 'Fugas de aire'),
+        # Categoría 1: Cambios (Agrupados bajo "Cambios")
+        ('camb_filtro', 'Cambio de filtro (Aceite, combustible y aire)'),
+        ('camb_anticong', 'Revisión de consistencia de anticongelante'),
+        
+        # Categoría 2: Revisión General
+        ('gral_fusibles', 'Revisión, fusibles, relay'),
+        ('gral_luces', 'Revisar luces'),
+        ('gral_fugas_aire', 'Fugas de aire'),
+        ('gral_llantas', 'Llantas (mm y psi)'),
+        ('gral_fugas_aceite', 'Fugas de aceite'),
+        
+        # Categoría 3: Revisión Suspensión
+        ('susp_amortiguadores', 'Amortiguadores'),
+        ('susp_bolsa_aire', 'Bolsa de aire'),
+        ('susp_bujes_muelle', 'Bujes de muelle'),
+        ('susp_bujes_tirantes', 'Bujes de tirantes'),
+        
+        # Categoría 4: Revisión Dirección
+        ('dir_vibracion', 'Revisión de vibración (prueba de pistón)'),
+        ('dir_pernos', 'Revisión de pernos'),
     ]
+    # --- FIN DE LA LISTA ---
+
 
     tarea_principal = models.ForeignKey(
         TareaMantenimiento, 
@@ -170,7 +203,19 @@ class TareaPreventivaSubtask(models.Model):
         choices=TAREAS_PREVENTIVAS_CHOICES,
         verbose_name="Sub-tarea"
     )
+    
     completada = models.BooleanField(default=False, verbose_name="Completada")
+    observaciones = models.TextField(
+        blank=True, 
+        verbose_name="Observaciones (ej: mm, psi, notas)"
+    )
+    foto_evidencia = models.ImageField(
+    upload_to='evidencias/', 
+    null=True,   # <-- ¡Añadir este! Permite guardar NULL en la base de datos.
+    blank=True,  # <-- ¡Añadir este! Permite que el campo esté vacío en el formulario.
+    verbose_name="Foto de Evidencia"
+)
+
 
     class Meta:
         unique_together = ('tarea_principal', 'nombre_subtask') # Evita duplicados
@@ -178,7 +223,6 @@ class TareaPreventivaSubtask(models.Model):
 
     def __str__(self):
         return f"{self.get_nombre_subtask_display()} - {self.tarea_principal.id}"
-
 
 class HerramientaSolicitada(models.Model):
     """
