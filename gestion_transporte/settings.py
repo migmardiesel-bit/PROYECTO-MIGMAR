@@ -31,7 +31,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-$c_s*b+$vvhn^df(bb$9np5tm1
 ON_RENDER = os.getenv('RENDER') == 'true'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = not ON_RENDER
+DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -282,3 +282,6 @@ WHATSAPP_RECIPIENTS = [
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
