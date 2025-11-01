@@ -3138,7 +3138,16 @@ class EntregaSuministrosListView(AdminRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        queryset = super().get_queryset().select_related('operador', 'unidad').order_by('-fecha_entrega')
+        # --- INICIO DE LA CORRECCIÓN ---
+        #
+        # Filtramos para excluir registros donde el operador se haya eliminado (sea Nulo).
+        # Esto previene un error 500 en la plantilla si esta intenta
+        # acceder a 'obj.operador.nombre' y 'obj.operador' es None.
+        #
+        # La causa más probable de tu error 500 es un registro de EntregaSuministros
+        # apuntando a un Operador que fue borrado.
+        queryset = super().get_queryset().filter(operador__isnull=False).select_related('operador', 'unidad').order_by('-fecha_entrega')
+        # --- FIN DE LA CORRECCIÓN ---
         
         operador_id = self.request.GET.get('operador')
         unidad_id = self.request.GET.get('unidad') 
