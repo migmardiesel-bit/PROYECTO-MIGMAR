@@ -2,7 +2,6 @@
 {% load humanize %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <style>
     .container-fluid {
         padding-left: 8px;
@@ -111,7 +110,7 @@
         transition: all 0.3s ease;
         border: none;
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        background: black;
+        background: white; /* <-- CORREGIDO: de 'black' a 'white' */
         padding: 16px;
     }
     .subtask-item:hover {
@@ -121,7 +120,7 @@
     
     .evidence-badge {
         background: linear-gradient(135deg, #667eea, #764ba2);
-        color: black;
+        color: white; /* <-- CORREGIDO: de 'black' a 'white' */
         border-radius: 20px;
         padding: 6px 12px;
         font-size: 0.75rem;
@@ -135,7 +134,7 @@
         margin-bottom: 15px;
         display: inline-block;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        color: black !important; /* Asegurar que el texto sea blanco */
+        color: #2d3748 !important; /* <-- CORREGIDO: de 'black' a un color oscuro más profesional */
     }
 
     .floating-stats {
@@ -168,7 +167,7 @@
     
     /* Mejora para cards de información */
     .info-card {
-        background: black;
+        background: white; /* <-- CORREGIDO: de 'black' a 'white' */
         border-radius: 12px;
         padding: 20px;
         margin-bottom: 15px;
@@ -181,7 +180,7 @@
     /* Mejorar contraste en header principal */
     .header-gradient {
         position: relative;
-        color: black !important; /* Forzar texto blanco */
+        color: white !important; /* <-- CORREGIDO: de 'black' a 'white' */
     }
     
     /* Mejorar contraste en badges del header */
@@ -193,7 +192,7 @@
     
     /* Mejorar contraste en tarjetas con gradientes */
     .gradient-card-header {
-        color: black !important;
+        color: white !important; /* <-- CORREGIDO: de 'black' a 'white' */
         text-shadow: 0 1px 2px rgba(0,0,0,0.2); /* Añadir sombra para mejor legibilidad */
     }
     
@@ -209,7 +208,7 @@
     
     /* Mejorar contraste en las categorías de subtareas */
     .category-title {
-        color: black !important;
+        color: #2d3748 !important; /* <-- CORREGIDO: de 'black' a un color oscuro más profesional */
         text-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
     
@@ -224,19 +223,19 @@
 <div class="container-fluid py-3 px-3">
     <div class="row mb-4">
         <div class="col-12">
-            <div class="p-4 rounded-3 gradient-primary text-black position-relative overflow-hidden header-gradient">
+            <div class="p-4 rounded-3 gradient-info text-dark position-relative overflow-hidden">
                 <div class="position-absolute top-0 end-0 w-50 h-100" style="background: rgba(255,255,255,0.1); border-radius: 0 16px 0 0;"></div>
                 <div class="position-relative">
-                    <h2 class="h4 mb-2 fw-bold text-black">{{ titulo }}</h2>
+                    <h2 class="h4 mb-2 fw-bold text-dark">{{ titulo }}</h2>
                     <div class="d-flex flex-wrap gap-3 align-items-center">
                         <span class="badge header-badge">
-                            <i class="bi bi-tag-fill me-1 icon-contrast"></i>ID: {{ tarea.id }}
+                            <i class="fa-solid fa-tag me-1 icon-contrast"></i>ID: {{ tarea.id }}
                         </span>
                         <span class="badge header-badge">
-                            <i class="bi bi-gear-fill me-1 icon-contrast"></i>{{ tarea.get_tipo_mantenimiento_display }}
+                            <i class="fa-solid fa-gear me-1 icon-contrast"></i>{{ tarea.get_tipo_mantenimiento_display }}
                         </span>
                         <span class="badge header-badge">
-                            <i class="bi bi-flag-fill me-1 icon-contrast"></i>{{ tarea.get_prioridad_display }}
+                            <i class="fa-solid fa-flag me-1 icon-contrast"></i>{{ tarea.get_prioridad_display }}
                         </span>
                     </div>
                 </div>
@@ -251,35 +250,35 @@
                     <div class="status-connector {% if tarea.status != 'ASIGNADA' %}active{% endif %}"></div>
                     <div class="row text-center">
                         <div class="col status-step {% if tarea.status == 'ASIGNADA' %}active{% endif %}">
-                            <div class="rounded-circle {% if tarea.status == 'ASIGNADA' %}bg-primary{% else %}bg-success{% endif %} d-flex align-items-center justify-content-center mx-auto mb-2 status-icon" 
+                            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center mx-auto mb-2 status-icon" 
                                  style="width: 60px; height: 60px;">
-                                <i class="bi bi-clipboard-list text-black fs-5"></i>
+                                <i class="fa-solid fa-clipboard-list text-white fs-5"></i>
                             </div>
                             <span class="small fw-bold text-contrast d-block">Asignada</span>
                             {% if tarea.status == 'ASIGNADA' %}
-                            <span class="badge bg-primary text-black mt-1">Actual</span>
+                            <span class="badge bg-primary text-white mt-1">Actual</span>
                             {% endif %}
                         </div>
                         
                         <div class="col status-step {% if tarea.status == 'EN_PROCESO' %}active{% endif %}">
                             <div class="rounded-circle {% if tarea.status == 'EN_PROCESO' %}bg-warning{% else %}{% if tarea.status == 'COMPLETADA' %}bg-success{% else %}bg-light{% endif %}{% endif %} d-flex align-items-center justify-content-center mx-auto mb-2 status-icon" 
                                  style="width: 60px; height: 60px;">
-                                <i class="bi bi-tools {% if tarea.status == 'EN_PROCESO' %}text-black{% else %}{% if tarea.status == 'COMPLETADA' %}text-black{% else %}text-muted{% endif %}{% endif %} fs-5"></i>
+                                <i class="fa-solid fa-screwdriver-wrench {% if tarea.status == 'EN_PROCESO' %}text-white{% else %}{% if tarea.status == 'COMPLETADA' %}text-white{% else %}text-muted{% endif %}{% endif %} fs-5"></i>
                             </div>
                             <span class="small fw-bold text-contrast d-block">En Proceso</span>
                             {% if tarea.status == 'EN_PROCESO' %}
-                            <span class="badge bg-warning text-black mt-1">Actual</span>
+                            <span class="badge bg-warning text-dark mt-1">Actual</span>
                             {% endif %}
                         </div>
                         
                         <div class="col status-step {% if tarea.status == 'COMPLETADA' %}active{% endif %}">
                             <div class="rounded-circle {% if tarea.status == 'COMPLETADA' %}bg-success{% else %}bg-light{% endif %} d-flex align-items-center justify-content-center mx-auto mb-2 status-icon" 
                                  style="width: 60px; height: 60px;">
-                                <i class="bi bi-check-lg {% if tarea.status == 'COMPLETADA' %}text-black{% else %}text-muted{% endif %} fs-5"></i>
+                                <i class="fa-solid fa-check {% if tarea.status == 'COMPLETADA' %}text-white{% else %}text-muted{% endif %} fs-5"></i>
                             </div>
                             <span class="small fw-bold text-contrast d-block">Completada</span>
                             {% if tarea.status == 'COMPLETADA' %}
-                            <span class="badge bg-success text-black mt-1">Finalizada</span>
+                            <span class="badge bg-success text-white mt-1">Finalizada</span>
                             {% endif %}
                         </div>
                     </div>
@@ -292,22 +291,22 @@
         <div class="col-12 col-xxl-10">
 
             <div class="card mb-4">
-                <div class="card-header py-3 text-black gradient-success gradient-card-header">
+                <div class="card-header py-3 text-dark gradient-info gradient-card-header">
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center">
-                            <div class="bg-black rounded-circle d-flex align-items-center justify-content-center me-3" 
+                            <div class="bg-white rounded-circle d-flex align-items-center justify-content-center me-3" 
                                  style="width: 45px; height: 45px;">
-                                <i class="bi bi-kanban-fill text-success fs-4 icon-contrast"></i>
+                                <i class="fa-solid fa-table-columns text-info fs-4 icon-contrast"></i>
                             </div>
                             <div>
                                 <h5 class="mb-0 fw-bold text-black gradient-card-header">Ejecución y Progreso</h5>
-                                <p class="mb-0 small opacity-90" style="color: black;">Seguimiento detallado del trabajo técnico</p>
+                                <p class="mb-0 small opacity-90 text-black">Seguimiento detallado del trabajo técnico</p>
                             </div>
                         </div>
                         {% if total_tasks > 0 %}
                         <div class="text-end">
-                            <h4 class="mb-0 fw-bold text-black gradient-card-header">{{ completed_tasks }}/{{ total_tasks }}</h4>
-                            <small class="opacity-90" style="color: black;">Tareas Completadas</small>
+                            <h4 class="mb-0 fw-bold text-dark gradient-card-header">{{ completed_tasks }}/{{ total_tasks }}</h4>
+                            <small class="opacity-90">Tareas Completadas</small>
                         </div>
                         {% endif %}
                     </div>
@@ -336,7 +335,7 @@
                         <div class="row g-4">
                             <div class="col-12 col-lg-6">
                                 <div class="category-badge" style="background: linear-gradient(135deg, #ff9a9e, #fecfef);">
-                                    <i class="bi bi-arrow-repeat me-2"></i>Cambios y Revisión
+                                    <i class="fa-solid fa-arrows-rotate me-2"></i>Cambios y Revisión
                                 </div>
                                 {% for subtask in subtasks %}
                                     {% if subtask.nombre_subtask in "camb_filtro,camb_anticong" %}
@@ -344,32 +343,32 @@
                                         <div class="d-flex w-100 justify-content-between align-items-start">
                                             <div class="checklist-status me-3">
                                                 {% if subtask.completada %}
-                                                    <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                                                    <i class="fa-solid fa-circle-check text-success fs-3"></i>
                                                 {% else %}
-                                                    <i class="bi bi-clock-history text-warning fs-3"></i>
+                                                    <i class="fa-solid fa-clock-rotate-left text-warning fs-3"></i>
                                                 {% endif %}
                                             </div>
                                             <div class="checklist-content flex-grow-1">
                                                 <strong class="mb-2 d-block text-contrast">{{ subtask.get_nombre_subtask_display }}</strong>
                                                 {% if subtask.observaciones %}
                                                 <div class="alert alert-light border-0 p-2 mt-2 mb-0 small alert-contrast">
-                                                    <strong><i class="bi bi-pencil-square me-1"></i> Notas Técnico:</strong> 
+                                                    <strong><i class="fa-solid fa-pencil me-1"></i> Notas Técnico:</strong> 
                                                     {{ subtask.observaciones }}
                                                 </div>
                                                 {% elif not subtask.completada %}
                                                 <small class="d-block text-muted-improved mt-1">
-                                                    <i class="bi bi-info-circle me-1"></i> Pendiente de completar
+                                                    <i class="fa-solid fa-circle-info me-1"></i> Pendiente de completar
                                                 </small>
                                                 {% endif %}
                                             </div>
                                             <div class="checklist-evidence ms-3">
                                                 {% if subtask.foto_evidencia %}
                                                     <a href="{{ subtask.foto_evidencia.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
-                                                        <i class="bi bi-camera me-1"></i> Ver Foto
+                                                        <i class="fa-solid fa-camera me-1"></i> Ver Foto
                                                     </a>
                                                 {% else %}
                                                     <span class="badge bg-light text-dark border">
-                                                        <i class="bi bi-camera-off me-1"></i> Sin Foto
+                                                        <i class="fa-solid fa-camera-slash me-1"></i> Sin Foto
                                                     </span>
                                                 {% endif %}
                                             </div>
@@ -381,7 +380,7 @@
 
                             <div class="col-12 col-lg-6">
                                 <div class="category-badge" style="background: linear-gradient(135deg, #a1c4fd, #c2e9fb);">
-                                    <i class="bi bi-search me-2"></i>Revisión General
+                                    <i class="fa-solid fa-magnifying-glass me-2"></i>Revisión General
                                 </div>
                                 {% for subtask in subtasks %}
                                     {% if subtask.nombre_subtask in "gral_fusibles,gral_luces,gral_fugas_aire,gral_llantas,gral_fugas_aceite" %}
@@ -389,32 +388,32 @@
                                         <div class="d-flex w-100 justify-content-between align-items-start">
                                             <div class="checklist-status me-3">
                                                 {% if subtask.completada %}
-                                                    <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                                                    <i class="fa-solid fa-circle-check text-success fs-3"></i>
                                                 {% else %}
-                                                    <i class="bi bi-clock-history text-warning fs-3"></i>
+                                                    <i class="fa-solid fa-clock-rotate-left text-warning fs-3"></i>
                                                 {% endif %}
                                             </div>
                                             <div class="checklist-content flex-grow-1">
                                                 <strong class="mb-2 d-block text-contrast">{{ subtask.get_nombre_subtask_display }}</strong>
                                                 {% if subtask.observaciones %}
                                                 <div class="alert alert-light border-0 p-2 mt-2 mb-0 small alert-contrast">
-                                                    <strong><i class="bi bi-pencil-square me-1"></i> Notas Técnico:</strong> 
+                                                    <strong><i class="fa-solid fa-pencil me-1"></i> Notas Técnico:</strong> 
                                                     {{ subtask.observaciones }}
                                                 </div>
                                                 {% elif not subtask.completada %}
                                                 <small class="d-block text-muted-improved mt-1">
-                                                    <i class="bi bi-info-circle me-1"></i> Pendiente de completar
+                                                    <i class="fa-solid fa-circle-info me-1"></i> Pendiente de completar
                                                 </small>
                                                 {% endif %}
                                             </div>
                                             <div class="checklist-evidence ms-3">
                                                 {% if subtask.foto_evidencia %}
                                                     <a href="{{ subtask.foto_evidencia.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
-                                                        <i class="bi bi-camera me-1"></i> Ver Foto
+                                                        <i class="fa-solid fa-camera me-1"></i> Ver Foto
                                                     </a>
                                                 {% else %}
                                                     <span class="badge bg-light text-dark border">
-                                                        <i class="bi bi-camera-off me-1"></i> Sin Foto
+                                                        <i class="fa-solid fa-camera-slash me-1"></i> Sin Foto
                                                     </span>
                                                 {% endif %}
                                             </div>
@@ -426,7 +425,7 @@
 
                             <div class="col-12 col-lg-6">
                                 <div class="category-badge" style="background: linear-gradient(135deg, #ffecd2, #fcb69f);">
-                                    <i class="bi bi-car-front me-2"></i>Revisión Suspensión
+                                    <i class="fa-solid fa-car-front me-2"></i>Revisión Suspensión
                                 </div>
                                 {% for subtask in subtasks %}
                                     {% if subtask.nombre_subtask in "susp_amortiguadores,susp_bolsa_aire,susp_bujes_muelle,susp_bujes_tirantes" %}
@@ -434,32 +433,32 @@
                                         <div class="d-flex w-100 justify-content-between align-items-start">
                                             <div class="checklist-status me-3">
                                                 {% if subtask.completada %}
-                                                    <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                                                    <i class="fa-solid fa-circle-check text-success fs-3"></i>
                                                 {% else %}
-                                                    <i class="bi bi-clock-history text-warning fs-3"></i>
+                                                    <i class="fa-solid fa-clock-rotate-left text-warning fs-3"></i>
                                                 {% endif %}
                                             </div>
                                             <div class="checklist-content flex-grow-1">
                                                 <strong class="mb-2 d-block text-contrast">{{ subtask.get_nombre_subtask_display }}</strong>
                                                 {% if subtask.observaciones %}
                                                 <div class="alert alert-light border-0 p-2 mt-2 mb-0 small alert-contrast">
-                                                    <strong><i class="bi bi-pencil-square me-1"></i> Notas Técnico:</strong> 
+                                                    <strong><i class="fa-solid fa-pencil me-1"></i> Notas Técnico:</strong> 
                                                     {{ subtask.observaciones }}
                                                 </div>
                                                 {% elif not subtask.completada %}
                                                 <small class="d-block text-muted-improved mt-1">
-                                                    <i class="bi bi-info-circle me-1"></i> Pendiente de completar
+                                                    <i class="fa-solid fa-circle-info me-1"></i> Pendiente de completar
                                                 </small>
                                                 {% endif %}
                                             </div>
                                             <div class="checklist-evidence ms-3">
                                                 {% if subtask.foto_evidencia %}
                                                     <a href="{{ subtask.foto_evidencia.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
-                                                        <i class="bi bi-camera me-1"></i> Ver Foto
+                                                        <i class="fa-solid fa-camera me-1"></i> Ver Foto
                                                     </a>
                                                 {% else %}
                                                     <span class="badge bg-light text-dark border">
-                                                        <i class="bi bi-camera-off me-1"></i> Sin Foto
+                                                        <i class="fa-solid fa-camera-slash me-1"></i> Sin Foto
                                                     </span>
                                                 {% endif %}
                                             </div>
@@ -471,7 +470,7 @@
 
                             <div class="col-12 col-lg-6">
                                 <div class="category-badge" style="background: linear-gradient(135deg, #84fab0, #8fd3f4);">
-                                    <i class="bi bi-steering me-2"></i>Revisión Dirección
+                                    <i class="fa-solid fa-steering-wheel me-2"></i>Revisión Dirección
                                 </div>
                                 {% for subtask in subtasks %}
                                     {% if subtask.nombre_subtask in "dir_vibracion,dir_pernos" %}
@@ -479,32 +478,32 @@
                                         <div class="d-flex w-100 justify-content-between align-items-start">
                                             <div class="checklist-status me-3">
                                                 {% if subtask.completada %}
-                                                    <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                                                    <i class="fa-solid fa-circle-check text-success fs-3"></i>
                                                 {% else %}
-                                                    <i class="bi bi-clock-history text-warning fs-3"></i>
+                                                    <i class="fa-solid fa-clock-rotate-left text-warning fs-3"></i>
                                                 {% endif %}
                                             </div>
                                             <div class="checklist-content flex-grow-1">
                                                 <strong class="mb-2 d-block text-contrast">{{ subtask.get_nombre_subtask_display }}</strong>
                                                 {% if subtask.observaciones %}
                                                 <div class="alert alert-light border-0 p-2 mt-2 mb-0 small alert-contrast">
-                                                    <strong><i class="bi bi-pencil-square me-1"></i> Notas Técnico:</strong> 
+                                                    <strong><i class="fa-solid fa-pencil me-1"></i> Notas Técnico:</strong> 
                                                     {{ subtask.observaciones }}
                                                 </div>
                                                 {% elif not subtask.completada %}
                                                 <small class="d-block text-muted-improved mt-1">
-                                                    <i class="bi bi-info-circle me-1"></i> Pendiente de completar
+                                                    <i class="fa-solid fa-circle-info me-1"></i> Pendiente de completar
                                                 </small>
                                                 {% endif %}
                                             </div>
                                             <div class="checklist-evidence ms-3">
                                                 {% if subtask.foto_evidencia %}
                                                     <a href="{{ subtask.foto_evidencia.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
-                                                        <i class="bi bi-camera me-1"></i> Ver Foto
+                                                        <i class="fa-solid fa-camera me-1"></i> Ver Foto
                                                     </a>
                                                 {% else %}
                                                     <span class="badge bg-light text-dark border">
-                                                        <i class="bi bi-camera-off me-1"></i> Sin Foto
+                                                        <i class="fa-solid fa-camera-slash me-1"></i> Sin Foto
                                                     </span>
                                                 {% endif %}
                                             </div>
@@ -518,7 +517,7 @@
                     {% elif tarea.tipo_mantenimiento == 'CORRECTIVO' %}
                         <div class="text-center py-4">
                             <div class="bg-light rounded-3 p-4">
-                                <i class="bi bi-wrench display-4 text-primary mb-3"></i>
+                                <i class="fa-solid fa-wrench display-4 text-primary mb-3"></i>
                                 <h4 class="fw-bold text-contrast mb-3">Tarea Correctiva Específica</h4>
                                 <div class="alert alert-primary border-0 mx-auto" style="max-width: 500px; background: linear-gradient(135deg, #a8edea, #fed6e3);">
                                     <h5 class="alert-heading fw-bold text-contrast">{{ tarea.mantenimiento_correctivo.nombre }}</h5>
@@ -533,7 +532,7 @@
             <div class="card mb-4">
                 <div class="card-header py-3 text-black gradient-danger gradient-card-header">
                     <h5 class="mb-0 fw-bold text-black gradient-card-header">
-                        <i class="bi bi-info-circle-fill me-2 icon-contrast"></i>Detalles y Recursos
+                        <i class="fa-solid fa-circle-info me-2 icon-contrast"></i>Detalles y Recursos
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -542,8 +541,7 @@
                             <div class="p-4 border-end">
                                 <div class="d-flex align-items-center mb-3">
                                     <div class="circle-icon bg-light me-3">
-                                        <i class="bi bi-truck text-primary"></i>
-                                    </div>
+                                        <i class="fa-solid fa-truck text-dark"></i> </div>
                                     <div>
                                         <small class="text-muted-improved d-block">Unidad</small>
                                         <span class="fw-bold fs-6 text-contrast">{{ tarea.unidad.nombre }}</span>
@@ -555,8 +553,7 @@
                             <div class="p-4 border-end">
                                 <div class="d-flex align-items-center mb-3">
                                     <div class="circle-icon bg-light me-3">
-                                        <i class="bi bi-person-fill text-primary"></i>
-                                    </div>
+                                        <i class="fa-solid fa-user text-dark"></i> </div>
                                     <div>
                                         <small class="text-muted-improved d-block">Técnico</small>
                                         <span class="fw-bold fs-6 text-contrast">{{ tarea.tecnico.get_full_name|default:tarea.tecnico.username }}</span>
@@ -568,8 +565,7 @@
                             <div class="p-4">
                                 <div class="d-flex align-items-center mb-3">
                                     <div class="circle-icon bg-light me-3">
-                                        <i class="bi bi-person-check-fill text-primary"></i>
-                                    </div>
+                                        <i class="fa-solid fa-user-check text-dark"></i> </div>
                                     <div>
                                         <small class="text-muted-improved d-block">Asignada por</small>
                                         <span class="fw-bold fs-6 text-contrast">{{ tarea.admin.get_full_name|default:tarea.admin.username }}</span>
@@ -581,19 +577,19 @@
 
                     <div class="border-top p-4">
                         <h6 class="text-contrast fw-bold mb-3">
-                            <i class="bi bi-tools me-2"></i> Herramientas Solicitadas
+                            <i class="fa-solid fa-screwdriver-wrench me-2"></i> Herramientas Solicitadas
                         </h6>
                         {% if herramientas %}
                             <div class="d-flex flex-wrap gap-2">
                             {% for herram in herramientas %}
                                 <span class="badge bg-primary bg-opacity-10 text-primary border-0 py-2 px-3 fw-semibold">
-                                    <i class="bi bi-toolbox me-2"></i>{{ herram.nombre }}
+                                    <i class="fa-solid fa-toolbox me-2"></i>{{ herram.nombre }}
                                 </span>
                             {% endfor %}
                             </div>
                         {% else %}
                             <div class="alert alert-secondary border-0 py-3 mb-0 alert-contrast">
-                                <i class="bi bi-{% if tarea.status == 'ASIGNADA' %}hourglass-split{% else %}check-circle{% endif %} me-2"></i>
+                                <i class="fa-solid fa-{% if tarea.status == 'ASIGNADA' %}hourglass-half{% else %}circle-check{% endif %} me-2"></i>
                                 {% if tarea.status == 'ASIGNADA' %}
                                 Aún no seleccionadas por el técnico.
                                 {% else %}
@@ -606,11 +602,11 @@
                     {% if tarea.notas_admin %}
                     <div class="border-top p-4 bg-light">
                         <div class="d-flex align-items-start">
-                            <i class="bi bi-clipboard-fill text-warning fs-5 me-3 mt-1"></i>
+                            <i class="fa-solid fa-clipboard text-warning fs-5 me-3 mt-1"></i>
                             <div>
                                 <small class="text-muted-improved d-block mb-2 fw-bold">Notas del Administrador</small>
                                 <div class="alert alert-warning border-0 small p-3 rounded-3 mb-0 alert-contrast">
-                                    <i class="bi bi-quote me-1"></i>{{ tarea.notas_admin }}
+                                    <i class="fa-solid fa-quote-left me-1"></i>{{ tarea.notas_admin }}
                                 </div>
                             </div>
                         </div>
@@ -622,7 +618,7 @@
             <div class="card">
                 <div class="card-header py-3 text-black gradient-info gradient-card-header">
                     <h5 class="mb-0 fw-bold text-black gradient-card-header">
-                        <i class="bi bi-clock-history me-2 icon-contrast"></i>Línea de Tiempo y Acciones
+                        <i class="fa-solid fa-clock-rotate-left me-2 icon-contrast"></i>Línea de Tiempo y Acciones
                     </h5>
                 </div>
                 <div class="card-body p-4">
@@ -630,14 +626,14 @@
                         <div class="col-12 col-md-6">
                             <ul class="list-group list-group-flush">
                                 <li class="list-group-item d-flex align-items-center px-0 border-0">
-                                    <i class="bi bi-calendar-plus text-primary fs-4 me-3"></i>
+                                    <i class="fa-solid fa-calendar-plus text-primary fs-4 me-3"></i>
                                     <div>
                                         <strong class="text-contrast">Asignada:</strong><br>
                                         <span class="text-muted-improved">{{ tarea.fecha_asignacion|naturaltime }}</span>
                                     </div>
                                 </li>
                                 <li class="list-group-item d-flex align-items-center px-0 border-0">
-                                    <i class="bi bi-{% if tarea.fecha_inicio %}play-circle-fill text-success{% else %}hourglass-split text-muted-improved{% endif %} fs-4 me-3"></i>
+                                    <i class="fa-solid fa-{% if tarea.fecha_inicio %}circle-play text-success{% else %}hourglass-half text-muted-improved{% endif %} fs-4 me-3"></i>
                                     <div>
                                         <strong class="text-contrast">Iniciada:</strong><br>
                                         {% if tarea.fecha_inicio %}
@@ -649,7 +645,7 @@
                                     </div>
                                 </li>
                                 <li class="list-group-item d-flex align-items-center px-0 border-0">
-                                    <i class="bi bi-{% if tarea.fecha_fin %}check-circle-fill text-success{% else %}hourglass-split text-muted-improved{% endif %} fs-4 me-3"></i>
+                                    <i class="fa-solid fa-{% if tarea.fecha_fin %}circle-check text-success{% else %}hourglass-half text-muted-improved{% endif %} fs-4 me-3"></i>
                                     <div>
                                         <strong class="text-contrast">Finalizada:</strong><br>
                                         {% if tarea.fecha_fin %}
@@ -665,8 +661,8 @@
                         
                         {% if tarea.status == 'COMPLETADA' %}
                         <div class="col-12 col-md-6">
-                            <div class="bg-success text-black rounded-3 p-4 h-100 text-center">
-                                <i class="bi bi-trophy display-4 mb-3"></i>
+                            <div class="bg-success text-white rounded-3 p-4 h-100 text-center">
+                                <i class="fa-solid fa-trophy display-4 mb-3"></i>
                                 <h4 class="fw-bold mb-2">Tarea Completada</h4>
                                 <h2 class="display-6 fw-bold mb-0">{{ tarea.tiempo_total_minutos }} min</h2>
                                 <small class="opacity-90">Tiempo Total</small>
@@ -679,15 +675,15 @@
                         <div class="col-12">
                             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                                 <a href="{% url 'mantenimiento:admin_dashboard' %}" class="btn btn-outline-secondary py-2 px-4">
-                                    <i class="bi bi-arrow-left-circle me-2"></i> Volver al Panel
+                                    <i class="fa-solid fa-circle-arrow-left me-2"></i> Volver al Panel
                                 </a>
                                 {% if tarea.status == 'COMPLETADA' or tarea.status == 'EN_PROCESO' %}
-                                <a href="{% url 'mantenimiento:generar_pdf' tarea.pk %}" class="btn btn-info text-black py-2 px-4" target="_blank">
-                                    <i class="bi bi-printer-fill me-2"></i> Generar Reporte PDF
+                                <a href="{% url 'mantenimiento:generar_pdf' tarea.pk %}" class="btn btn-info text-dark py-2 px-4" target="_blank">
+                                    <i class="fa-solid fa-print me-2"></i> Generar Reporte PDF
                                 </a>
                                 {% endif %}
                                 <a href="{% url 'mantenimiento:admin_tarea_eliminar' tarea.pk %}" class="btn btn-danger py-2 px-4">
-                                    <i class="bi bi-trash-fill me-2"></i> Eliminar Tarea
+                                    <i class="fa-solid fa-trash me-2"></i> Eliminar Tarea
                                 </a>
                             </div>
                         </div>

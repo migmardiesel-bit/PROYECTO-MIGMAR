@@ -1,38 +1,43 @@
-<div class="subtask-card {{ category_class }} p-3">
-    <div class="d-flex w-100 justify-content-between align-items-start">
-        <div class="checklist-status me-3">
-            {% if subtask.completada %}
-                <i class="bi bi-check-circle-fill text-primary fs-3"></i>
-            {% else %}
-                <i class="bi bi-clock-history text-info fs-3"></i>
-            {% endif %}
-        </div>
+{% load humanize %}
 
-        <div class="checklist-content flex-grow-1">
-            <strong class="mb-2 d-block">{{ subtask.get_nombre_subtask_display }}</strong>
-            
-            {% if subtask.observaciones %}
-            <div class="alert alert-light border-0 p-2 mt-2 mb-0 small">
-                <strong><i class="bi bi-pencil-square me-1 text-primary"></i> Notas Técnico:</strong> 
-                {{ subtask.observaciones }}
-            </div>
-            {% elif not subtask.completada %}
-            <small class="d-block text-primary mt-1">
-                <i class="bi bi-info-circle me-1"></i> Pendiente de completar
-            </small>
-            {% endif %}
-        </div>
-
-        <div class="checklist-evidence ms-3">
-            {% if subtask.foto_evidencia %}
-                <a href="{{ subtask.foto_evidencia.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
-                    <i class="bi bi-camera me-1"></i> Ver Foto
-                </a>
-            {% else %}
-                <span class="badge bg-light text-primary border">
-                    <i class="bi bi-camera-off me-1"></i> Sin Foto
-                </span>
-            {% endif %}
-        </div>
-    </div>
+<div class="list-group-item py-3">
+    <div class="d-flex w-100 justify-content-between align-items-start">
+        
+        <div class="me-3">
+            {% if subtask.completada %}
+                <i class="bi bi-check-circle-fill text-success fs-3" 
+                   title="Completada"></i>
+            {% else %}
+                <i class="bi bi-circle text-muted fs-3"
+                   title="Pendiente"></i>
+            {% endif %}
+        </div>
+        
+        <div class="flex-grow-1">
+            <strong class="d-block mb-1">{{ subtask.get_nombre_subtask_display }}</strong>
+            
+            {% if subtask.observaciones %}
+                <div class="alert alert-light border-secondary p-2 mt-2 mb-0 small">
+                    <strong><i class="bi bi-pencil-square me-1"></i> Notas Técnico:</strong> 
+                    {{ subtask.observaciones }}
+                </div>
+            {% elif not subtask.completada %}
+                <small class="d-block text-muted mt-1">
+                    <i class="bi bi-info-circle me-1"></i> Pendiente de completar
+                </small>
+            {% endif %}
+        </div>
+        
+        <div class="ms-3 text-nowrap">
+            {% if subtask.foto_evidencia %}
+                <a href="{{ subtask.foto_evidencia.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-camera me-1"></i> Ver Foto
+                </a>
+            {% else %}
+                <span class="badge bg-light text-dark border">
+                    <i class="bi bi-camera-off me-1"></i> Sin Foto
+                </span>
+            {% endif %}
+        </div>
+    </div>
 </div>
