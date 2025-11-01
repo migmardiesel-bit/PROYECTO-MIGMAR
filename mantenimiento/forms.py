@@ -104,9 +104,17 @@ class TareaPreventivaSubtaskForm(forms.ModelForm):
     )
     
     foto_evidencia = forms.ImageField(
-        required=False, # <-- Queda siempre False
+        required=False, # Sigue False por defecto, la lógica lo hará True
         widget=forms.ClearableFileInput(attrs={'class': 'form-control form-control-sm'})
     )
+
+    # Lista de tareas que requieren foto
+    TAREAS_SUSPENSION = [
+        'susp_amortiguadores', 
+        'susp_bolsa_aire', 
+        'susp_bujes_muelle', 
+        'susp_bujes_tirantes'
+    ]
 
     class Meta:
         model = TareaPreventivaSubtask
@@ -119,26 +127,35 @@ class TareaPreventivaSubtaskForm(forms.ModelForm):
             # Usamos el "display name" de la subtask como la etiqueta del checkbox
             self.fields['completada'].label = self.instance.get_nombre_subtask_display()
 
-            # --- LÓGICA DE VALIDACIÓN MODIFICADA (SE ELIMINÓ LA OBLIGATORIEDAD) ---
+            # --- LÓGICA DE VALIDACIÓN RESTAURADA ---
             
-            # 1. Definimos los IDs de las tareas que SIEMPRE requieren foto
-            TAREAS_SUSPENSION = [
-                'susp_amortiguadores', 
-                'susp_bolsa_aire', 
-                'susp_bujes_muelle', 
-                'susp_bujes_tirantes'
-            ]
-            
-            # 2. Comprobamos si la instancia actual es una de ellas
-            if self.instance.nombre_subtask in TAREAS_SUSPENSION:
+            # 1. Comprobamos si la instancia actual es una de suspensión
+            if self.instance.nombre_subtask in self.TAREAS_SUSPENSION:
                 
-                # 3. YA NO HACEMOS EL CAMPO DE FOTO OBLIGATORIO.
-                # Se eliminó la línea: self.fields['foto_evidencia'].required = True
+                # 2. Hacemos el campo de foto OBLIGATORIO
+                self.fields['foto_evidencia'].required = True
                 
-                # Opcional: añadimos un indicador visual a la etiqueta (ya no será "Requerido" si no es obligatorio)
-                self.fields['foto_evidencia'].label = "Foto de Evidencia"
+                # 3. Añadimos un indicador visual a la etiqueta
+                self.fields['foto_evidencia'].label = "Foto de Evidencia (Requerida)"
             
-            # --- FIN DE LÓGICA DE VALIDACIÓN MODIFICADA ----
+            # --- FIN DE LÓGICA DE VALIDACIÓN ---
+
+    def clean(self):
+        cleaned_data = super().clean()
+        completada = cleaned_data.get('completada')
+        foto_evidencia = cleaned_data.get('foto_evidencia')
+        
+        # Verificamos si la tarea es de suspensión
+        es_tarea_suspension = self.instance.nombre_subtask in self.TAREAS_SUSPENSION
+
+        # Si el técnico marca "Completada" Y es una tarea de suspensión
+        if completada and es_tarea_suspension:
+            # Y NO se subió una foto (ni había una existente)
+            if not foto_evidencia:
+                # Lanzamos un error
+                self.add_error('foto_evidencia', 'Debe subir una foto de evidencia para completar esta tarea de suspensión.')
+        
+        return cleaned_data
 
 
 # Creamos un FormSet para el checklist preventivo

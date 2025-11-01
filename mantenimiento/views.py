@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.db import transaction # <-- IMPORTANTE PARA TRANSACCIONES
 from collections import OrderedDict
 from flota.models import Unidad # Importación de Unidad
-from django.db.models import Q, Avg
+from django.db.models import Q, Avg, Case, When # <-- Añadir Case y When
 from datetime import timedelta
 from .models import (
     TareaMantenimiento, CatalogoHerramienta, CatalogoMantenimientoCorrectivo,
@@ -34,6 +34,7 @@ from io import BytesIO
 import boto3
 from botocore.exceptions import BotoCoreError, NoCredentialsError
 # ===================================================
+from django.contrib.auth.models import User # <-- Añadir esta
 
 
 # ==============================================================================
@@ -123,21 +124,67 @@ class TecnicoRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
 class AdminDashboardView(AdminRequiredMixin, ListView):
     """
     Dashboard del Admin: Muestra todas las tareas y su estado.
+    *** VISTA MODIFICADA ***
     """
     model = TareaMantenimiento
     template_name = 'mantenimiento/admin_dashboard.html'
     context_object_name = 'tareas'
-    paginate_by = 20
+    paginate_by = 20 # La paginación funciona con los filtros
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['titulo'] = "Panel de Tareas de Mantenimiento"
+
+        # --- 1. Stats para Tarjetas ---
+        # (Usamos el queryset base sin filtrar para los conteos globales)
+        all_tasks = TareaMantenimiento.objects.all()
+        context['count_asignadas'] = all_tasks.filter(status='ASIGNADA').count()
+        context['count_en_proceso'] = all_tasks.filter(status='EN_PROCESO').count()
+        context['count_completadas'] = all_tasks.filter(status='COMPLETADA').count()
+
+        # --- 2. Datos para Filtros ---
+        # Usamos el limit_tecnicos del modelo TareaMantenimiento
+        limit_tecnicos = Q(groups__name='Tecnico') | Q(groups__name='Supervisor')
+        context['tecnicos'] = User.objects.filter(limit_tecnicos).distinct().order_by('username')
+        context['unidades'] = Unidad.objects.all().order_by('nombre')
+
+        # --- 3. Devolver valores de filtro a la plantilla ---
+        # (Estos valores se definen en get_queryset)
+        context['filtro_status_val'] = self.filtro_status
+        context['filtro_tecnico_val'] = int(self.filtro_tecnico) if self.filtro_tecnico else ''
+        context['filtro_unidad_val'] = int(self.filtro_unidad) if self.filtro_unidad else ''
+        
         return context
     
     def get_queryset(self):
         # Optimización: Precarga las relaciones ForeignKey
-        return TareaMantenimiento.objects.all().select_related(
+        qs = TareaMantenimiento.objects.all().select_related(
             'unidad', 'tecnico', 'admin', 'mantenimiento_correctivo'
+        )
+
+        # --- Lógica de Filtros ---
+        self.filtro_status = self.request.GET.get('filtroStatus', '')
+        self.filtro_tecnico = self.request.GET.get('filtroTecnico', '')
+        self.filtro_unidad = self.request.GET.get('filtroUnidad', '')
+
+        if self.filtro_status:
+            qs = qs.filter(status=self.filtro_status)
+        
+        if self.filtro_tecnico:
+            qs = qs.filter(tecnico_id=self.filtro_tecnico)
+            
+        if self.filtro_unidad:
+            qs = qs.filter(unidad_id=self.filtro_unidad)
+
+        # Ordenar: Prioridad (ALTA, MEDIA, BAJA), luego más nuevas
+        return qs.order_by(
+            Case(
+                When(prioridad='ALTA', then=1),
+                When(prioridad='MEDIA', then=2),
+                When(prioridad='BAJA', then=3),
+                default=4
+            ),
+            '-fecha_asignacion'
         )
 
 @method_decorator(login_required, name='dispatch')
@@ -197,7 +244,14 @@ class AdminTareaDetalleView(AdminRequiredMixin, DetailView):
         # Si es preventivo, obtenemos las sub-tareas
         if tarea.tipo_mantenimiento == 'PREVENTIVO':
             # Optimizamos para precargar las fotos
-            context['subtasks'] = tarea.subtasks_preventivas.all()
+            subtasks_qs = tarea.subtasks_preventivas.all() # Obtenemos el queryset
+            context['subtasks'] = subtasks_qs # Pasamos la lista completa
+            
+            # --- AQUÍ LA CORRECCIÓN ---
+            # Calculamos los totales aquí, en la vista
+            context['total_tasks'] = subtasks_qs.count()
+            context['completed_tasks'] = subtasks_qs.filter(completada=True).count()
+            # --- FIN DE LA CORRECCIÓN ---
             
         return context
 

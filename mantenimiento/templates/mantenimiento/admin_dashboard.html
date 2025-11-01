@@ -5,7 +5,9 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1>{{ titulo }}</h1>
-        <a href="{% url 'mantenimiento:asignar_tarea' %}" class="btn btn-primary">Asignar Nueva Tarea</a>
+        <a href="{% url 'mantenimiento:asignar_tarea' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Asignar Nueva Tarea
+        </a>
     </div>
 
     <div class="mb-3">
@@ -13,14 +15,81 @@
         <a href="{% url 'mantenimiento:correctivo_list' %}" class="btn btn-outline-secondary btn-sm">Gestionar Tareas Correctivas</a>
     </div>
 
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-warning shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Tareas Asignadas (Pendientes)</h5>
+                    <p class="card-text fs-3 fw-bold">{{ count_asignadas }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-info shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Tareas En Proceso</h5>
+                    <p class="card-text fs-3 fw-bold">{{ count_en_proceso }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Tareas Completadas (Total)</h5>
+                    <p class="card-text fs-3 fw-bold">{{ count_completadas }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="card shadow-sm rounded-lg">
+        <div class="card-header">
+            <form method="GET" action="" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="filtroStatus" class="form-label">Estado</label>
+                    <select name="filtroStatus" id="filtroStatus" class="form-select">
+                        <option value="">Todos los Estados</option>
+                        <option value="ASIGNADA" {% if filtro_status_val == 'ASIGNADA' %}selected{% endif %}>Asignada</option>
+                        <option value="EN_PROCESO" {% if filtro_status_val == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
+                        <option value="COMPLETADA" {% if filtro_status_val == 'COMPLETADA' %}selected{% endif %}>Completada</option>
+                        <option value="CANCELADA" {% if filtro_status_val == 'CANCELADA' %}selected{% endif %}>Cancelada</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroTecnico" class="form-label">Técnico</label>
+                    <select name="filtroTecnico" id="filtroTecnico" class="form-select">
+                        <option value="">Todos los Técnicos</option>
+                        {% for tecnico in tecnicos %}
+                        <option value="{{ tecnico.id }}" {% if filtro_tecnico_val == tecnico.id %}selected{% endif %}>
+                            {{ tecnico.username }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroUnidad" class="form-label">Unidad</label>
+                    <select name="filtroUnidad" id="filtroUnidad" class="form-select">
+                        <option value="">Todas las Unidades</option>
+                        {% for unidad in unidades %}
+                        <option value="{{ unidad.id }}" {% if filtro_unidad_val == unidad.id %}selected{% endif %}>
+                            {{ unidad.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+                    <a href="{% url 'mantenimiento:admin_dashboard' %}" class="btn btn-outline-secondary w-100 mt-1">Limpiar</a>
+                </div>
+            </form>
+            </div>
+
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table class="table table-hover table-sm align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th>ID Tarea</th>
-                            <th>Unidad</th>
+                            <th>ID</th>
+                            <th>Prioridad</th> <th>Unidad</th>
                             <th>Técnico</th>
                             <th>Tipo</th>
                             <th>Estado</th>
@@ -33,6 +102,16 @@
                         {% for tarea in tareas %}
                         <tr>
                             <td><strong>{{ tarea.id }}</strong></td>
+                            
+                            <td>
+                                <span class="badge 
+                                    {% if tarea.prioridad == 'ALTA' %} bg-danger
+                                    {% elif tarea.prioridad == 'MEDIA' %} bg-warning text-dark
+                                    {% else %} bg-secondary {% endif %}">
+                                    {{ tarea.get_prioridad_display }}
+                                </span>
+                            </td>
+
                             <td>{{ tarea.unidad.nombre }}</td>
                             <td>{{ tarea.tecnico.username }}</td>
                             <td>{{ tarea.get_tipo_mantenimiento_display }}</td>
@@ -55,24 +134,53 @@
                             </td>
                             <td>
                                 <a href="{% url 'mantenimiento:admin_tarea_detalle' tarea.pk %}" class="btn btn-sm btn-outline-primary">
-                                    Ver Progreso
+                                    Ver
                                 </a>
                                 
                                 {% if tarea.status != 'COMPLETADA' %}
-                                <a href="{% url 'mantenimiento:admin_tarea_eliminar' tarea.pk %}" class="btn btn-sm btn-outline-danger ms-1">
-                                    Eliminar
+                                <a href="{% url 'mantenimiento:admin_tarea_eliminar' tarea.pk %}" class="btn btn-sm btn-outline-danger ms-1" title="Eliminar Tarea">
+                                    <i class="bi bi-trash"></i>
                                 </a>
                                 {% endif %}
-                                </td>
+                            </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center">No hay tareas asignadas.</td>
+                            <td colspan="9" class="text-center">No hay tareas que coincidan con los filtros.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+
+            {% if is_paginated %}
+                <nav aria-label="Navegación de tareas" class="mt-3">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1&{{ request.GET.urlencode | cut:'page=' }}">« Primera</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode | cut:'page=' }}">Anterior</a>
+                            </li>
+                        {% endif %}
+
+                        <li class="page-item active" aria-current="page">
+                            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode | cut:'page=' }}">Siguiente</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&{{ request.GET.urlencode | cut:'page=' }}">Última »</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+
         </div>
     </div>
 </div>
