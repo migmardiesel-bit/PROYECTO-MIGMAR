@@ -95,7 +95,11 @@
         </div>
 
         {% if is_paginated %}
-            {% include "paginacion.html" %}
+            {% comment %} 
+              Aquí está la corrección: 
+              Se usa la ruta con espacio de nombres 'flota/paginacion.html' 
+            {% endcomment %}
+            {% include "flota/paginacion.html" %}
         {% endif %}
     </div>
 </div>
