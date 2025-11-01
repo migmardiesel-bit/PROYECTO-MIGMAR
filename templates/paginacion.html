@@ -1,0 +1,35 @@
+{% comment %} Código para: templates/paginacion.html {% endcomment %}
+<nav aria-label="Navegación de páginas">
+    <ul class="pagination justify-content-center">
+
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&amp;{{ request.GET.urlencode }}{% endif %}" aria-label="Anterior">
+                    <span aria-hidden="true">&laquo; Anterior</span>
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link" aria-hidden="true">&laquo; Anterior</span>
+            </li>
+        {% endif %}
+
+        <li class="page-item active" aria-current="page">
+            <span class="page-link">
+                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+            </span>
+        </li>
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&amp;{{ request.GET.urlencode }}{% endif %}" aria-label="Siguiente">
+                    <span aria-hidden="true">Siguiente &raquo;</span>
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link" aria-hidden="true">Siguiente &raquo;</span>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
